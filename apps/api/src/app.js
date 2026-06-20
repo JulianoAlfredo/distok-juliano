@@ -12,6 +12,8 @@ const tenantsRoutes = require('./modules/tenants/tenants.routes');
 const plansRoutes = require('./modules/plans/plans.routes');
 const brandingPublicRoutes = require('./modules/branding/branding.routes');
 const brandingAdminRoutes = require('./modules/branding/branding.admin.routes');
+const productsRoutes = require('./modules/products/products.routes');
+const usersRoutes = require('./modules/users/users.routes');
 
 /** Monta a instância Fastify com plugins, middlewares e rotas. */
 async function buildApp() {
@@ -49,6 +51,8 @@ async function buildApp() {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
   app.register(brandingPublicRoutes, { prefix: '/api/v1/public' });
   app.register(brandingAdminRoutes, { prefix: '/api/v1/branding' });
+  app.register(productsRoutes, { prefix: '/api/v1/products' });
+  app.register(usersRoutes, { prefix: '/api/v1/users' });
   app.register(tenantsRoutes, { prefix: '/api/v1/admin' });
   app.register(plansRoutes, { prefix: '/api/v1/admin' });
 

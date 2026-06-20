@@ -8,6 +8,8 @@ import { AppShell } from './components/AppShell';
 import { LoginPage } from './features/auth/LoginPage';
 import { ChangePasswordPage } from './features/auth/ChangePasswordPage';
 import { BrandingEditor } from './features/branding/BrandingEditor';
+import { ProductsPage } from './features/products/ProductsPage';
+import { UsersPage } from './features/users/UsersPage';
 import { getToken } from './api/client';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -37,9 +39,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/trocar-senha" element={<ChangePasswordPage />} />
             <Route path="/" element={<RequireAuth><Placeholder title="Dashboard" /></RequireAuth>} />
             <Route path="/marca" element={<RequireAuth><BrandingEditor /></RequireAuth>} />
-            <Route path="/produtos" element={<RequireAuth><Placeholder title="Produtos" /></RequireAuth>} />
+            <Route path="/produtos" element={<RequireAuth><ProductsPage /></RequireAuth>} />
             <Route path="/estoque" element={<RequireAuth><Placeholder title="Estoque" /></RequireAuth>} />
-            <Route path="/funcionarios" element={<RequireAuth><Placeholder title="Funcionários" /></RequireAuth>} />
+            <Route path="/funcionarios" element={<RequireAuth><UsersPage /></RequireAuth>} />
             <Route path="/relatorios" element={<RequireAuth><Placeholder title="Relatórios" /></RequireAuth>} />
             <Route path="/admin/tenants" element={<RequireAuth><Placeholder title="Distribuidoras" /></RequireAuth>} />
             <Route path="/admin/planos" element={<RequireAuth><Placeholder title="Planos" /></RequireAuth>} />
