@@ -11,12 +11,21 @@ const env = require('./config/env');
 async function start() {
   const app = await buildApp();
   try {
-    await app.listen({ port: env.PORT, host: '0.0.0.0' });
-    app.log.info(`DISTOK API ouvindo em :${env.PORT} (${env.NODE_ENV})`);
+    // Passenger (Hostinger) injeta o socket via variável; fora dele usa PORT.
+    const listenOpts =
+      typeof PhusionPassenger !== 'undefined'
+        ? { path: 'passenger' }
+        : { port: env.PORT, host: '0.0.0.0' };
+    await app.listen(listenOpts);
+    app.log.info(`DISTOK API no ar (${env.NODE_ENV})`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
   }
+}
+
+if (typeof PhusionPassenger !== 'undefined') {
+  PhusionPassenger.configure({ autoInstall: false });
 }
 
 start();

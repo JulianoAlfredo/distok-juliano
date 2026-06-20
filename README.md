@@ -8,7 +8,15 @@ SaaS multi-tenant de gerenciamento de estoque para distribuidoras.
 - **Deploy:** GitHub → Node app na Hostinger (Passenger) + MySQL da Hostinger
 
 ## Documentação
-- [PRD](docs/prd.md) · [Arquitetura](docs/architecture.md) · [Design/UX](docs/ux-design.md) · [Trilha de dev](docs/workflow.md)
+- [PRD](docs/prd.md) · [Arquitetura](docs/architecture.md) · [Design/UX](docs/ux-design.md) · [Trilha de dev](docs/workflow.md) · [Deploy Hostinger](docs/deploy-hostinger.md)
+
+## Funcionalidades (MVP completo)
+- **Multi-tenant** com isolamento na aplicação (sem RLS) + RBAC (super_admin/admin/operator)
+- **White-label** por tenant (cores/logo/nome/terminologia, contraste WCAG AA, gating por plano)
+- **Cadastros**: produtos (margem, inativação, busca) e funcionários (roles, senha temp)
+- **Estoque**: entrada/saída/ajuste transacional, saldo materializado, concorrência segura, auditoria imutável, alerta de mínimo
+- **Relatórios** PDF/CSV branded (estoque, movimentações, auditoria, abaixo do mínimo) + **dashboard**
+- **Super Admin**: gestão de tenants, planos e métricas (MRR)
 
 ## Setup local
 ```bash
@@ -30,4 +38,4 @@ npm run dev                   # sobe api (:3000) e web (:5173)
 | `npm run lint` | ESLint (inclui regra anti-bypass de tenant) |
 
 ## Status
-Épico 1 (Fundação, Multi-Tenant e Autenticação) — em implementação. Ver [docs/workflow.md](docs/workflow.md).
+MVP completo (Épicos 1–6 implementados). Deploy na Hostinger: ver [docs/deploy-hostinger.md](docs/deploy-hostinger.md).

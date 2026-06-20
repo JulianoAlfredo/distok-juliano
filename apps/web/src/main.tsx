@@ -13,6 +13,8 @@ import { UsersPage } from './features/users/UsersPage';
 import { StockPage } from './features/stock/StockPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { ReportsPage } from './features/reports/ReportsPage';
+import { TenantsPage } from './features/superadmin/TenantsPage';
+import { PlansPage } from './features/superadmin/PlansPage';
 import { getToken } from './api/client';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -29,15 +31,6 @@ function RoleHome() {
   return <DashboardPage />;
 }
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div>
-      <h2 style={{ marginTop: 0 }}>{title}</h2>
-      <p style={{ color: 'var(--color-text-mut)' }}>Em construção — chega no épico correspondente da trilha.</p>
-    </div>
-  );
-}
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
@@ -52,8 +45,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/produtos" element={<RequireAuth><ProductsPage /></RequireAuth>} />
             <Route path="/estoque" element={<RequireAuth><StockPage /></RequireAuth>} />
             <Route path="/funcionarios" element={<RequireAuth><UsersPage /></RequireAuth>} />
-            <Route path="/admin/tenants" element={<RequireAuth><Placeholder title="Distribuidoras" /></RequireAuth>} />
-            <Route path="/admin/planos" element={<RequireAuth><Placeholder title="Planos" /></RequireAuth>} />
+            <Route path="/admin/tenants" element={<RequireAuth><TenantsPage /></RequireAuth>} />
+            <Route path="/admin/planos" element={<RequireAuth><PlansPage /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
