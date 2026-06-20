@@ -1,0 +1,10 @@
+{
+  "name": "@distok/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}
