@@ -10,6 +10,7 @@ import { ChangePasswordPage } from './features/auth/ChangePasswordPage';
 import { BrandingEditor } from './features/branding/BrandingEditor';
 import { ProductsPage } from './features/products/ProductsPage';
 import { UsersPage } from './features/users/UsersPage';
+import { StockPage } from './features/stock/StockPage';
 import { getToken } from './api/client';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -40,7 +41,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<RequireAuth><Placeholder title="Dashboard" /></RequireAuth>} />
             <Route path="/marca" element={<RequireAuth><BrandingEditor /></RequireAuth>} />
             <Route path="/produtos" element={<RequireAuth><ProductsPage /></RequireAuth>} />
-            <Route path="/estoque" element={<RequireAuth><Placeholder title="Estoque" /></RequireAuth>} />
+            <Route path="/estoque" element={<RequireAuth><StockPage /></RequireAuth>} />
             <Route path="/funcionarios" element={<RequireAuth><UsersPage /></RequireAuth>} />
             <Route path="/relatorios" element={<RequireAuth><Placeholder title="Relatórios" /></RequireAuth>} />
             <Route path="/admin/tenants" element={<RequireAuth><Placeholder title="Distribuidoras" /></RequireAuth>} />
