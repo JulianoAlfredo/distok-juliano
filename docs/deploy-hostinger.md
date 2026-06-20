@@ -1,118 +1,228 @@
-# DISTOK — Guia de Deploy na Hostinger
+# DISTOK — Guia de Deploy & Configuração (handoff para o dev de deploy)
 
-> Implementa o **Épico 6** (stories 6.1–6.4). Stack: GitHub → Node app (Passenger) + MySQL, ambos na Hostinger.
-> ⚠️ Antes de tudo, **valide o risco RT1**: confirme que seu plano Hostinger permite **Setup Node.js App** (Node persistente) + acesso ao MySQL.
-
----
-
-## 1. Pré-requisitos
-- Plano Hostinger com **Node.js (Setup Node.js App)** e **MySQL**.
-- Domínio `distok.com.br` (ou o seu) apontado para a Hostinger.
-- Acesso SSH habilitado (hPanel → Avançado → SSH).
-- Repositório no GitHub: `jotacraq/distok`.
+> **Para quem vai fazer o deploy:** este documento é autossuficiente. Você **não precisa** ter participado do desenvolvimento. Siga as fases em ordem. Ao final, o DISTOK estará no ar na Hostinger com o banco configurado.
+> Stack: **GitHub → API Node.js (Fastify, via Passenger) + Frontend React estático + MySQL**, tudo na Hostinger.
 
 ---
 
-## 2. Banco de dados (MySQL)
-1. hPanel → **Bancos de dados MySQL** → criar banco `uXXXX_distok` + usuário + senha.
-2. Anote `DB_HOST` (geralmente `localhost`), `DB_NAME`, `DB_USER`, `DB_PASS`.
-3. (Opcional) criar `uXXXX_distok_test` para um ambiente de homologação.
+## ⭐ TL;DR — Resumo rápido (leia isto primeiro)
+
+| Pergunta | Resposta |
+|---|---|
+| **É Next ou Express?** | **Nenhum dos dois no sentido de SSR.** Backend é **app Node persistente (Fastify)** — você deploya como deployaria um Express, via **Setup Node.js App / Passenger**. Frontend é **React (Vite) estático** — só arquivos, sem Node. **NÃO é Next.js, não tem SSR.** |
+| **Tipo de deploy** | 2 partes: (1) **Node app** para `apps/api` (Passenger); (2) **arquivos estáticos** de `apps/web/dist` numa pasta pública. |
+| **Versão do Node** | **LTS ≥ 18** (recomendado **Node 20**). Definida no painel "Setup Node.js App". |
+| **Startup file da API** | `src/server.js` · **Application root** = `.../apps/api` |
+| **Banco** | **MySQL** (utf8mb4). Crie banco + usuário no hPanel; rode `npm run migrate` (ou importe `docs/schema.sql` no phpMyAdmin). NÃO precisa criar tabela manualmente. |
+| **Envs OBRIGATÓRIAS (API)** | `NODE_ENV=production`, `PORT=3000`, `APP_BASE_URL` (URL do front), `ROOT_DOMAIN`, `JWT_SECRET` (forte), `DB_HOST`, `DB_PORT=3306`, `DB_NAME`, `DB_USER`, `DB_PASS`. Modelo completo: `.env.production.example`. |
+| **Envs do FRONT** | `VITE_API_URL` no build (ex.: `https://api.distok.com.br/api/v1`) — ou vazio se a API ficar no mesmo domínio via proxy. Modelo: `apps/web/.env.example`. |
+| **E-mail (opcional)** | `MAIL_SMTP_*` e `MAIL_FROM`. Sem isso, o sistema só loga os e-mails (não envia senha temp/reset), mas funciona. |
+| **Ordem prática** | criar banco → criar Node app → preencher `.env` → `npm ci` → `npm run migrate` → (1ª vez) `npm run seed` → `npm run build` → publicar `dist/` → **Restart** → testar `/health`. |
+| **Atalho** | `bash scripts/deploy.sh` faz install+migrate+build+publish de uma vez. |
+
+> Detalhes de cada item nas seções abaixo.
 
 ---
 
-## 3. Backend — Node app (Passenger)
-1. hPanel → **Avançado → Node.js / Setup Node.js App** → **Create application**.
-   - **Node version:** LTS suportada (≥ 18).
-   - **Application root:** pasta do deploy (ex.: `domains/distok.com.br/repo/apps/api`).
-   - **Application startup file:** `src/server.js`.
-   - **Application URL:** subdomínio da API, ex.: `api.distok.com.br`.
-2. Defina as **variáveis de ambiente** (no painel do Node app ou em `.env` fora do webroot):
-   ```
-   NODE_ENV=production
-   PORT=3000
-   APP_BASE_URL=https://app.distok.com.br
-   ROOT_DOMAIN=distok.com.br
-   JWT_SECRET=<gere um segredo forte>
-   BCRYPT_ROUNDS=12
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_NAME=uXXXX_distok
-   DB_USER=uXXXX_distok
-   DB_PASS=<senha>
-   MAIL_SMTP_HOST=...  MAIL_SMTP_PORT=587  MAIL_SMTP_USER=...  MAIL_SMTP_PASS=...
-   MAIL_FROM="DISTOK <no-reply@distok.com.br>"
-   UPLOADS_DIR=/home/uXXXX/distok-uploads
-   UPLOADS_PUBLIC_URL=https://api.distok.com.br/uploads
-   ```
-3. **Deploy do código** (uma das opções):
-   - **Git da Hostinger** (hPanel → Git): conectar `jotacraq/distok`, branch `main`, auto-deploy on push.
-   - ou **SSH**: `git clone`/`git pull` na pasta do app.
-4. Via **SSH**, na raiz do repo:
-   ```bash
-   npm ci
-   npm run migrate          # cria/atualiza o schema no MySQL de produção
-   npm run seed             # SOMENTE no primeiro deploy / ambiente demo (cria super admin)
-   ```
-5. No painel do Node app, clique em **Restart** (Passenger recarrega o `server.js`).
-6. Teste: `https://api.distok.com.br/health` deve responder `{"status":"ok"}`.
+## 0. Entenda a arquitetura em 1 minuto
 
-> O `server.js` detecta o Passenger automaticamente; fora dele escuta em `PORT`.
+O DISTOK tem **duas aplicações** + **um banco**:
+
+| Componente | O que é | Onde roda |
+|---|---|---|
+| **API** (`apps/api`) | Servidor Node.js (Fastify) — REST API. Fica **rodando** (processo persistente). | **Setup Node.js App** da Hostinger (Passenger) |
+| **Frontend** (`apps/web`) | React + Vite → vira **HTML/CSS/JS estático** (pasta `dist/`). | Pasta pública do domínio (estático, sem Node) |
+| **Banco** | **MySQL** | MySQL da Hostinger |
+
+> ⚠️ **Não é Next.js.** Não há SSR. O front é um SPA estático e fala com a API por HTTP. Por isso há um detalhe importante de configuração de URL da API — ver **Fase 5**.
+
+**Isolamento multi-tenant:** cada distribuidora é um tenant; o sistema separa os dados por `tenant_id` na aplicação (o MySQL não tem RLS). Cada tenant acessa por **subdomínio** (`cliente.distok.com.br`).
 
 ---
 
-## 4. Frontend — build estático
-1. Build local ou via CI:
-   ```bash
-   npm run build            # gera apps/web/dist
-   ```
-2. Configure o frontend para apontar à API. Em produção, o front chama `/api/...`; aponte via:
-   - subdomínio próprio + proxy, **ou**
-   - ajuste o `baseURL` do axios para `https://api.distok.com.br/api/v1` (variável de build).
-3. Publique o conteúdo de `apps/web/dist` em `public_html` (ou no subdomínio `app.distok.com.br`).
-4. O arquivo `.htaccess` (já incluído em `apps/web/public/.htaccess`) faz o fallback SPA do React Router.
+## 1. Pré-requisitos (confirme antes de começar — risco crítico)
+
+No **hPanel** da Hostinger, confirme que o plano tem:
+1. **Avançado → Node.js** (também chamado "Setup Node.js App"). **Se não existir, o backend não roda** — seria necessário VPS. Cheque isto **primeiro**.
+2. **Avançado → Acesso SSH** (para rodar `npm`/migrations).
+3. **Bancos de dados → MySQL**.
+4. Um domínio (ex.: `distok.com.br`) apontando para a Hostinger.
+
+Você também vai precisar de acesso ao repositório GitHub `jotacraq/distok`.
 
 ---
 
-## 5. Domínios, subdomínios e SSL (multi-tenant)
-- **Wildcard DNS:** `*.distok.com.br` → mesmo app do frontend, para que `cliente.distok.com.br` resolva e o `tenant-resolver` identifique o tenant pelo Host.
-- **SSL:** hPanel → SSL (Let's Encrypt). Se o plano permitir **wildcard SSL**, ative para `*.distok.com.br`; senão, provisione SSL por subdomínio no onboarding de cada cliente.
-- **Domínio próprio do cliente (plano Pro):** CNAME do domínio do cliente → app + registre em `tenants.custom_domain` + emita SSL.
+## 2. Criar o banco MySQL
+
+hPanel → **Bancos de dados → Gerenciamento de bancos MySQL** → **Criar**:
+- Banco: ex. `distok` → a Hostinger gera o nome completo `u123456_distok`.
+- Usuário: crie um (vira `u123456_distok`) e **dê todos os privilégios** a ele nesse banco.
+- Senha: gere uma forte e **guarde** (vai no `.env`, nunca no Git).
+
+Anote: `DB_NAME`, `DB_USER`, `DB_HOST` (geralmente `localhost`; se o painel indicar outro host/IP, use-o).
+
+> **As tabelas** são criadas depois (Fase 4.3) por `npm run migrate`. Se preferir criar o schema **sem Node** (direto no phpMyAdmin), importe [`docs/schema.sql`](./schema.sql). Tudo sobre o banco está em [`docs/database.md`](./database.md).
 
 ---
 
-## 6. CI/CD
-- O `.github/workflows/ci.yml` roda lint + migrations + testes + build a cada PR/push.
-- O deploy em si é disparado pela **integração Git da Hostinger** ao receber push em `main` (segredos ficam fora do GitHub).
-- Pós-pull recomendado (hook/SSH): `npm ci && npm run migrate && npm run build`.
+## 3. Obter o código no servidor
+
+Opção recomendada — **Git da Hostinger** (hPanel → Avançado → **Git**):
+- Repositório: `https://github.com/jotacraq/distok` · Branch: `main`.
+- Defina o diretório de deploy (ex.: `domains/distok.com.br/distok`).
+- (Opcional) ative auto-deploy no push.
+
+Alternativa — **SSH**:
+```bash
+cd ~/domains/distok.com.br
+git clone https://github.com/jotacraq/distok.git
+```
 
 ---
 
-## 7. Checklist de Onboarding do 1º Cliente (Story 6.4)
-- [ ] Logado como **Super Admin** (`super@distok.com.br` no seed), criar a distribuidora em **Distribuidoras → Nova** (nome, CNPJ, slug, plano, admin).
+## 4. Configurar e subir a API (Node app)
+
+### 4.1 Criar o Node app
+hPanel → **Avançado → Node.js → Create application**:
+- **Node version:** LTS (≥ 18).
+- **Application root:** a pasta do repo + `/apps/api` (ex.: `domains/distok.com.br/distok/apps/api`).
+- **Application startup file:** `src/server.js`.
+- **Application URL:** um subdomínio para a API, ex.: `api.distok.com.br`.
+
+### 4.2 Variáveis de ambiente
+Crie o arquivo **`.env` na raiz do repo** (NÃO em apps/api) a partir do modelo:
+```bash
+cp .env.production.example .env
+# edite .env e preencha JWT_SECRET, DB_*, MAIL_*, UPLOADS_*, APP_BASE_URL, ROOT_DOMAIN
+```
+> Todas as variáveis estão explicadas dentro do `.env.production.example`. O `JWT_SECRET` pode ser gerado com `openssl rand -hex 32`.
+> Alternativamente, dá para cadastrar as variáveis direto no painel do Node app — mas o `.env` na raiz é mais simples e o código já o lê.
+
+### 4.3 Instalar, migrar e (1ª vez) semear
+Via **SSH**, na raiz do repo. Você pode usar o script pronto:
+```bash
+# primeiro deploy (cria super admin + dados demo):
+RUN_SEED=yes PUBLISH_DIR=~/public_html bash scripts/deploy.sh
+
+# deploys seguintes (sem recriar dados):
+PUBLISH_DIR=~/public_html bash scripts/deploy.sh
+```
+Ou manualmente:
+```bash
+npm ci
+npm run migrate     # cria/atualiza TODAS as tabelas no seu banco
+npm run seed        # SOMENTE no primeiro deploy
+```
+
+### 4.4 Iniciar
+No painel do Node app, clique em **Restart**. Teste:
+```bash
+curl https://api.distok.com.br/health      # deve responder {"status":"ok", ...}
+```
+
+---
+
+## 5. Configurar e publicar o Frontend (estático) — ATENÇÃO à URL da API
+
+O front precisa saber **onde está a API**. Há duas formas (escolha UMA):
+
+**Opção A — API em subdomínio próprio (recomendada):**
+Antes do build, defina a URL da API:
+```bash
+cp apps/web/.env.example apps/web/.env
+# edite e coloque:
+#   VITE_API_URL=https://api.distok.com.br/api/v1
+```
+Garanta que `APP_BASE_URL` no `.env` da API = URL do front (para o CORS liberar).
+
+**Opção B — API no mesmo domínio do front (via proxy):**
+Deixe `VITE_API_URL` em branco (o front usa `/api/v1` relativo) e configure um proxy reverso no `.htaccess` do front (há uma regra comentada em `apps/web/public/.htaccess`) encaminhando `/api` para a porta do Node app.
+
+### Build e publicação
+```bash
+npm run build                 # gera apps/web/dist
+# publique o conteúdo de apps/web/dist na pasta pública do domínio do front
+# (o script deploy.sh já faz a cópia para PUBLISH_DIR)
+```
+O `apps/web/public/.htaccess` (incluído no build) faz o **fallback de SPA** do React Router — necessário para as rotas funcionarem ao recarregar a página.
+
+---
+
+## 6. Domínios, subdomínios e SSL (multi-tenant)
+
+- **Frontend:** publique no domínio/subdomínio escolhido (ex.: `app.distok.com.br`).
+- **Wildcard DNS:** crie `*.distok.com.br` apontando para o mesmo front, para que `cliente.distok.com.br` resolva (o sistema identifica o tenant pelo subdomínio).
+- **SSL (Let's Encrypt no hPanel):** ative para `distok.com.br`, `app.`, `api.`. Se o plano permitir **wildcard SSL** (`*.distok.com.br`), ative; senão, emita SSL por subdomínio conforme cadastra cada cliente.
+- **Domínio próprio do cliente (plano Pro):** CNAME do domínio dele → front + registre em `tenants.custom_domain`.
+
+---
+
+## 7. Verificação pós-deploy (smoke test)
+
+1. `GET https://api.distok.com.br/health` → `{"status":"ok"}`.
+2. Acesse o front. Faça login como **Super Admin** (do seed): `super@distok.com.br` / `distok123`.
+3. Em **Distribuidoras**, crie um tenant de teste → confira se o e-mail de credenciais chega (se SMTP configurado).
+4. Acesse `https://<slug>.distok.com.br` → a tela de login deve aparecer **com o tema** daquele tenant.
+5. Logue como admin do tenant, troque a senha, cadastre um produto e lance uma movimentação.
+
+> **Troque/!remova as senhas do seed em produção.** Idealmente rode o seed só uma vez (ou crie o super admin manualmente e não rode o seed).
+
+---
+
+## 8. Operação contínua
+
+- **Atualizações:** `git pull` na pasta do repo → `bash scripts/deploy.sh` → **Restart** do Node app.
+- **Migrations:** sempre versionadas; `npm run migrate` é idempotente (só aplica o que falta).
+- **Backup:** ative o backup do MySQL no hPanel **e** agende um `mysqldump` off-site (RPO alvo ≤ 24h).
+- **Logs:** stdout do Node app (painel do Node.js).
+- **Monitoramento:** aponte um monitor externo (ex.: UptimeRobot) para `/health`.
+- **CI:** o `.github/workflows/ci.yml` roda lint + migrations + testes + build a cada PR/push em `main` — não faz o deploy (isso é manual/Git da Hostinger), mas garante que o que está em `main` é íntegro.
+
+---
+
+## 9. Troubleshooting (problemas comuns)
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| `/health` não responde | Node app não iniciou | Veja logs no painel Node.js; confirme `startup file = src/server.js` e Node ≥ 18 |
+| API sobe mas `/health` dá erro de DB | `DB_*` errados ou usuário sem privilégio | Revise `.env`; teste credenciais; confirme `DB_HOST` |
+| Front carrega mas toda chamada dá erro de CORS | `APP_BASE_URL` ≠ URL real do front | Ajuste `APP_BASE_URL` no `.env` da API e reinicie |
+| Front carrega mas não fala com a API | `VITE_API_URL` não setado no build (Opção A) ou proxy ausente (Opção B) | Veja a **Fase 5** |
+| Recarregar uma rota (ex.: /produtos) dá 404 | `.htaccess` de SPA ausente | Confirme que `apps/web/dist/.htaccess` foi publicado |
+| Subdomínio do tenant não tematiza | DNS wildcard ausente ou slug errado | Configure `*.distok.com.br`; confira o `slug` do tenant |
+| E-mails não chegam | SMTP não configurado | Preencha `MAIL_*` no `.env` (sem isso o sistema só loga e segue) |
+
+---
+
+## 10. Checklist de Onboarding do 1º Cliente
+
+- [ ] Logado como Super Admin, criar a distribuidora (**Distribuidoras → Nova**: nome, CNPJ, slug, plano, admin).
 - [ ] Subdomínio `cliente.distok.com.br` provisionado + SSL.
-- [ ] Admin recebe e-mail com senha temporária e faz 1º login → troca de senha.
+- [ ] Admin recebe e-mail com senha temporária → 1º login → troca de senha.
 - [ ] Admin aplica a **marca** (logo + cores) em **Marca**; contraste validado.
-- [ ] (Pro) Ajusta **terminologia** e rodapé de relatório.
-- [ ] Cadastra **produtos** (manual ou importação futura) e **funcionários** com as roles corretas.
+- [ ] (Pro) ajusta **terminologia** e rodapé de relatório.
+- [ ] Cadastra **produtos** e **funcionários** com as roles corretas.
 - [ ] Lança o **saldo inicial** (entrada/ajuste) refletindo o estoque real.
 - [ ] Gera o **relatório de estoque atual** e confere com o cliente.
-- [ ] Treinamento online de 1h realizado.
-- [ ] Monitoramento: `GET /health` + rotina de **backup** do MySQL ativa.
+- [ ] Treinamento de 1h realizado.
+- [ ] Backup do MySQL ativo + monitor em `/health`.
 
 ---
 
-## 8. Operação
-- **Health:** `GET /api/v1/.../health` (use um monitor externo gratuito, ex. UptimeRobot).
-- **Backup:** rotina de backup do MySQL da Hostinger + `mysqldump` agendado off-site (RPO ≤ 24h).
-- **Logs:** stdout do Node app (painel) — nível por `NODE_ENV`.
-- **Rollback:** `git revert`/checkout da `main` + `npm run migrate` (migrations versionadas).
-
----
-
-## 9. Credenciais demo (seed)
-Após `npm run seed`:
+## 11. Referência rápida de credenciais demo (após `npm run seed`)
 - Super Admin: `super@distok.com.br` / `distok123`
-- Admin (tenant Pro): `admin@bebidassul.com` / `distok123`
+- Admin (tenant Pro "Bebidas Sul"): `admin@bebidassul.com` / `distok123`
 - Operador: `operador@bebidassul.com` / `distok123`
 
-> Em produção real, **rode o seed só uma vez** (ou nunca, criando o super admin manualmente) e troque as senhas.
+> Demo apenas. Em produção, troque tudo.
+
+---
+
+## 12. Onde está cada coisa no repo
+- `.env.production.example` — modelo das variáveis da API (explicadas).
+- `apps/web/.env.example` — modelo da variável do front (`VITE_API_URL`).
+- `scripts/deploy.sh` — instala, migra, builda e publica (rodar via SSH).
+- `apps/api/src/db/migrations/` — schema (aplicado por `npm run migrate`).
+- `apps/api/src/db/seeds/` — dados iniciais (`npm run seed`).
+- `apps/web/public/.htaccess` — fallback de SPA (+ regra de proxy comentada).
+- `docs/` — PRD, arquitetura, UX, workflow (contexto do produto, se precisar).

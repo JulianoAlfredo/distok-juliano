@@ -8,7 +8,8 @@ SaaS multi-tenant de gerenciamento de estoque para distribuidoras.
 - **Deploy:** GitHub → Node app na Hostinger (Passenger) + MySQL da Hostinger
 
 ## Documentação
-- [PRD](docs/prd.md) · [Arquitetura](docs/architecture.md) · [Design/UX](docs/ux-design.md) · [Trilha de dev](docs/workflow.md) · [Deploy Hostinger](docs/deploy-hostinger.md)
+- [PRD](docs/prd.md) · [Arquitetura](docs/architecture.md) · [Design/UX](docs/ux-design.md) · [Trilha de dev](docs/workflow.md)
+- **Deploy (handoff p/ o dev de deploy):** [Guia Hostinger](docs/deploy-hostinger.md) · [Banco de dados](docs/database.md) · [schema.sql](docs/schema.sql)
 
 ## Funcionalidades (MVP completo)
 - **Multi-tenant** com isolamento na aplicação (sem RLS) + RBAC (super_admin/admin/operator)

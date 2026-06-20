@@ -1,8 +1,17 @@
 import axios from 'axios';
 
-/** Client HTTP central. Injeta o JWT e trata 401 (sessão expirada). */
+/**
+ * Client HTTP central. Injeta o JWT e trata 401 (sessão expirada).
+ *
+ * baseURL:
+ *  - dev: usa '/api/v1' (o Vite faz proxy para http://localhost:3000 — ver vite.config.ts)
+ *  - produção: defina VITE_API_URL no build (ex.: https://api.distok.com.br/api/v1).
+ *    Se a API for servida no MESMO domínio do front (via proxy/.htaccess), mantenha '/api/v1'.
+ */
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+
 export const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE,
 });
 
 const TOKEN_KEY = 'distok_token';
