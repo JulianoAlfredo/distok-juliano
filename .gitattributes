@@ -1,0 +1,6 @@
+# Normaliza quebras de linha: LF no repositório
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.svg text
+*.ico binary
