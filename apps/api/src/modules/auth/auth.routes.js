@@ -34,6 +34,10 @@ module.exports = async function authRoutes(app) {
     });
   });
 
+  app.get('/me', { preHandler: [authenticate] }, async (req) => {
+    return service.me(req.ctx);
+  });
+
   app.post('/refresh', { preHandler: [authenticate] }, async (req) => {
     return service.refresh(req.ctx);
   });

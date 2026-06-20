@@ -64,6 +64,25 @@ async function login({ email, password: plain, tenantSlug }) {
   };
 }
 
+/** Dados do usuário logado (GET /auth/me). */
+async function me(ctx) {
+  const user = await knex('users').where({ id: ctx.userId }).first();
+  if (!user) throw Errors.unauthorized();
+  let tenant = null;
+  if (user.tenant_id) {
+    const t = await knex('tenants').where({ id: user.tenant_id }).first();
+    if (t) tenant = { id: t.id, name: t.name, slug: t.slug, status: t.status };
+  }
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    mustChangePassword: !!user.must_change_password,
+    tenant,
+  };
+}
+
 /** Reemite token se o atual ainda é válido (ctx vem do middleware auth). */
 async function refresh(ctx) {
   const user = await knex('users').where({ id: ctx.userId }).first();
@@ -133,4 +152,4 @@ async function reset({ token, newPassword }) {
   return { ok: true };
 }
 
-module.exports = { login, refresh, changePassword, forgot, reset };
+module.exports = { login, me, refresh, changePassword, forgot, reset };
