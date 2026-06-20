@@ -11,6 +11,8 @@ import { BrandingEditor } from './features/branding/BrandingEditor';
 import { ProductsPage } from './features/products/ProductsPage';
 import { UsersPage } from './features/users/UsersPage';
 import { StockPage } from './features/stock/StockPage';
+import { DashboardPage } from './features/dashboard/DashboardPage';
+import { ReportsPage } from './features/reports/ReportsPage';
 import { getToken } from './api/client';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -19,6 +21,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (loading) return <div style={{ padding: 'var(--sp-8)' }}>Carregando...</div>;
   if (user?.mustChangePassword) return <Navigate to="/trocar-senha" replace />;
   return <AppShell>{children}</AppShell>;
+}
+
+function RoleHome() {
+  const { user } = useAuth();
+  if (user?.role === 'super_admin') return <Navigate to="/admin/tenants" replace />;
+  return <DashboardPage />;
 }
 
 function Placeholder({ title }: { title: string }) {
@@ -38,12 +46,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/trocar-senha" element={<ChangePasswordPage />} />
-            <Route path="/" element={<RequireAuth><Placeholder title="Dashboard" /></RequireAuth>} />
+            <Route path="/" element={<RequireAuth><RoleHome /></RequireAuth>} />
+            <Route path="/relatorios" element={<RequireAuth><ReportsPage /></RequireAuth>} />
             <Route path="/marca" element={<RequireAuth><BrandingEditor /></RequireAuth>} />
             <Route path="/produtos" element={<RequireAuth><ProductsPage /></RequireAuth>} />
             <Route path="/estoque" element={<RequireAuth><StockPage /></RequireAuth>} />
             <Route path="/funcionarios" element={<RequireAuth><UsersPage /></RequireAuth>} />
-            <Route path="/relatorios" element={<RequireAuth><Placeholder title="Relatórios" /></RequireAuth>} />
             <Route path="/admin/tenants" element={<RequireAuth><Placeholder title="Distribuidoras" /></RequireAuth>} />
             <Route path="/admin/planos" element={<RequireAuth><Placeholder title="Planos" /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
