@@ -11,6 +11,15 @@ const {
   ROLES, TENANT_STATUS, USER_STATUS, DEFAULT_TERMINOLOGY,
 } = require('@distok/shared');
 
+/** Normaliza um texto em slug seguro para subdomínio. */
+const slugify = (v) =>
+  (v || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 40);
+
 async function listTenants({ status, plan, page = 1, limit = 25 }) {
   const q = knex('tenants')
     .join('plans', 'plans.id', 'tenants.plan_id')
@@ -28,6 +37,21 @@ async function listTenants({ status, plan, page = 1, limit = 25 }) {
 async function createTenant({ ctx, name, cnpj, slug, address, planCode, adminName, adminEmail, ip }) {
   const plan = await knex('plans').where({ code: planCode }).first();
   if (!plan) throw Errors.validation('Plano inexistente');
+
+  // normaliza o slug (gera a partir do nome se vier vazio)
+  slug = slugify(slug || name);
+  if (!slug) throw Errors.validation('Informe um nome válido para a empresa.');
+
+  // validações com mensagens claras (evita erro genérico de duplicidade)
+  if (await knex('tenants').where({ slug }).first()) {
+    throw Errors.validation('Já existe uma distribuidora com esse endereço (subdomínio). Escolha outro.');
+  }
+  if (cnpj && (await knex('tenants').where({ cnpj }).first())) {
+    throw Errors.validation('Já existe uma distribuidora com esse CNPJ.');
+  }
+  if (await knex('users').where({ email: adminEmail }).first()) {
+    throw Errors.validation('Esse e-mail de administrador já está em uso.');
+  }
 
   const tenantId = uuid();
   const tempPass = password.generateTempPassword();

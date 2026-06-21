@@ -5,6 +5,7 @@ import './theme/tokens.css';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, useAuth } from './auth/useAuth';
 import { ToastProvider } from './components/ui/Toast';
+import { ConfirmProvider } from './components/ui/Confirm';
 import { Loading } from './components/ui';
 import { AppShell } from './components/AppShell';
 import { LoginPage } from './features/auth/LoginPage';
@@ -40,6 +41,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
+         <ConfirmProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
@@ -57,6 +59,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
+         </ConfirmProvider>
         </ToastProvider>
       </AuthProvider>
     </ThemeProvider>

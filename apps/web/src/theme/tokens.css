@@ -263,6 +263,16 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .auth-card { width: 100%; max-width: 400px; }
 @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } .auth-aside { display: none; } }
 
+/* ---------- Ajuda contextual (tooltip) ---------- */
+.hint { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--color-border); color: var(--color-text-mut); font-size: 11px; font-weight: 700; cursor: help; position: relative; flex: none; }
+.hint:hover, .hint:focus-visible { background: var(--color-primary); color: var(--on-primary); outline: none; }
+.hint-pop { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--color-text); color: #fff; font-size: var(--fs-xs); font-weight: 400; line-height: 1.4; padding: 8px 10px; border-radius: var(--radius-sm); width: max-content; max-width: 240px; box-shadow: var(--shadow-lg); opacity: 0; visibility: hidden; transition: opacity var(--t-fast); z-index: 200; text-align: left; }
+.hint:hover .hint-pop, .hint:focus-visible .hint-pop { opacity: 1; visibility: visible; }
+
+/* ---------- Diálogo de confirmação ---------- */
+.confirm-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: grid; place-items: center; padding: var(--sp-4); z-index: 300; animation: toast-in var(--t); }
+.confirm { width: 420px; max-width: 95vw; box-shadow: var(--shadow-lg); }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 760px) {
   .grid-2 { grid-template-columns: 1fr; }

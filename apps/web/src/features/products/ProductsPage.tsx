@@ -3,6 +3,10 @@ import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { PageHeader, StatusBadge, EmptyState, Loading } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
+import { useConfirm } from '../../components/ui/Confirm';
+import { MoneyInput } from '../../components/ui/MoneyInput';
+import { FieldLabel } from '../../components/ui/Hint';
+import { formatBRL } from '../../lib/format';
 import { IconBox, IconPlus, IconSearch } from '../../components/ui/icons';
 
 type Product = {
@@ -11,11 +15,11 @@ type Product = {
 };
 
 const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0 };
-const brl = (n: number) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function ProductsPage() {
   const { t } = useTheme();
   const toast = useToast();
+  const confirm = useConfirm();
   const [items, setItems] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState<any>(null);
@@ -37,24 +41,30 @@ export function ProductsPage() {
     : null;
 
   async function save() {
+    if (!form.name.trim()) return toast.push('Dê um nome para o item.', 'error');
     setSaving(true);
     try {
       const payload = { ...form, cost_price: Number(form.cost_price), sale_price: Number(form.sale_price), min_stock: Number(form.min_stock) };
       if (editingId) await api.put(`/products/${editingId}`, payload);
       else await api.post('/products', payload);
       setForm(null); setEditingId(null);
-      toast.push(editingId ? 'Produto atualizado.' : 'Produto cadastrado.', 'success');
+      toast.push(editingId ? 'Item atualizado com sucesso.' : 'Item cadastrado com sucesso.', 'success');
       await load();
     } catch (e: any) {
-      toast.push(e.response?.data?.error?.message || 'Erro ao salvar.', 'error');
+      toast.push(e.response?.data?.error?.message || 'Não foi possível salvar.', 'error');
     } finally {
       setSaving(false);
     }
   }
 
-  async function inactivate(id: string) {
-    if (!confirm('Inativar este item? Ele some das listas, mas o histórico é mantido.')) return;
-    await api.patch(`/products/${id}/inactivate`);
+  async function inactivate(p: Product) {
+    const ok = await confirm({
+      title: `Inativar "${p.name}"?`,
+      message: 'O item deixa de aparecer nas listas, mas todo o histórico é mantido. Você pode reativar depois.',
+      confirmText: 'Sim, inativar', danger: true,
+    });
+    if (!ok) return;
+    await api.patch(`/products/${p.id}/inactivate`);
     toast.push('Item inativado.', 'success');
     await load();
   }
@@ -63,14 +73,14 @@ export function ProductsPage() {
     <div>
       <PageHeader
         title={`${t('product')}s`}
-        subtitle="Cadastro e precificação do catálogo"
+        subtitle="Cadastre seus itens e defina preço de custo e de venda"
         actions={!form && <button className="btn btn-primary" onClick={() => { setForm({ ...EMPTY }); setEditingId(null); }}><IconPlus width={16} height={16} /> Novo {term}</button>}
       />
 
       <div className="row" style={{ marginBottom: 'var(--sp-4)', maxWidth: 440 }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}><IconSearch width={18} height={18} /></span>
-          <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar por nome ou SKU" value={search}
+          <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar pelo nome ou código" value={search}
             onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} />
         </div>
         <button className="btn" onClick={load}>Buscar</button>
@@ -79,16 +89,37 @@ export function ProductsPage() {
       {form && (
         <div className="card" style={{ marginBottom: 'var(--sp-6)' }}>
           <h3 style={{ marginBottom: 'var(--sp-4)' }}>{editingId ? 'Editar' : 'Novo'} {term}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--sp-4)' }}>
-            <Field label="Nome*"><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-            <Field label="SKU/código"><input className="input" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></Field>
-            <Field label="Categoria"><input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></Field>
-            <Field label="Unidade"><input className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></Field>
-            <Field label="Custo (R$)"><input className="input" type="number" step="0.01" value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} /></Field>
-            <Field label="Revenda (R$)"><input className="input" type="number" step="0.01" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value })} /></Field>
-            <Field label="Estoque mínimo"><input className="input" type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--sp-4)' }}>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel required>Nome do {term}</FieldLabel>
+              <input className="input" placeholder="Ex.: Refrigerante 2L" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel hint="Código interno para localizar o item rapidamente. Pode deixar em branco.">Código (SKU)</FieldLabel>
+              <input className="input" placeholder="opcional" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel hint="Agrupa itens parecidos (ex.: Bebidas, Limpeza). Opcional.">Categoria</FieldLabel>
+              <input className="input" placeholder="Ex.: Bebidas" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel hint="Como você conta o item: unidade (un), caixa (cx), pacote (pct)...">Unidade</FieldLabel>
+              <input className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel hint="Quanto você paga por este item.">Preço de custo</FieldLabel>
+              <MoneyInput value={Number(form.cost_price)} onChange={(v) => setForm({ ...form, cost_price: v })} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel hint="Por quanto você revende este item.">Preço de venda</FieldLabel>
+              <MoneyInput value={Number(form.sale_price)} onChange={(v) => setForm({ ...form, sale_price: v })} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <FieldLabel hint="O sistema avisa quando o saldo ficar igual ou abaixo deste número.">Estoque mínimo</FieldLabel>
+              <input className="input" type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
+            </div>
           </div>
-          <p className="muted mt-4">Margem estimada: <strong style={{ color: 'var(--color-text)' }}>{margin == null ? '—' : `${margin}%`}</strong></p>
+          <p className="muted mt-4">Lucro por item: <strong style={{ color: margin != null && margin >= 0 ? 'var(--color-success)' : 'var(--color-text)' }}>{margin == null ? '—' : `${margin}%`}</strong></p>
           <div className="row mt-2">
             <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
             <button className="btn" onClick={() => { setForm(null); setEditingId(null); }}>Cancelar</button>
@@ -97,24 +128,24 @@ export function ProductsPage() {
       )}
 
       {loading ? <Loading /> : items.length === 0 ? (
-        <div className="card"><EmptyState icon={<IconBox />} title={`Nenhum ${term} ainda`} hint="Cadastre o primeiro item do catálogo." /></div>
+        <div className="card"><EmptyState icon={<IconBox />} title={`Nenhum ${term} cadastrado`} hint="Clique em “Novo” para cadastrar seu primeiro item." action={!form && <button className="btn btn-primary" onClick={() => setForm({ ...EMPTY })}><IconPlus width={16} height={16} /> Novo {term}</button>} /></div>
       ) : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Nome</th><th>SKU</th><th>Custo</th><th>Revenda</th><th>Margem</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Código</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Situação</th><th></th></tr></thead>
             <tbody>
               {items.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.name}</td>
                   <td className="muted">{p.sku || '—'}</td>
-                  <td>{brl(p.cost_price)}</td>
-                  <td>{brl(p.sale_price)}</td>
+                  <td>{formatBRL(Number(p.cost_price))}</td>
+                  <td>{formatBRL(Number(p.sale_price))}</td>
                   <td>{p.margin == null ? '—' : `${p.margin}%`}</td>
                   <td><StatusBadge status={p.status} /></td>
                   <td>
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
                       <button className="btn btn-sm" onClick={() => { setForm({ name: p.name, sku: p.sku || '', category: p.category || '', unit: p.unit, cost_price: p.cost_price, sale_price: p.sale_price, min_stock: p.min_stock }); setEditingId(p.id); }}>Editar</button>
-                      {p.status === 'active' && <button className="btn btn-sm" onClick={() => inactivate(p.id)}>Inativar</button>}
+                      {p.status === 'active' && <button className="btn btn-sm" onClick={() => inactivate(p)}>Inativar</button>}
                     </div>
                   </td>
                 </tr>
@@ -125,8 +156,4 @@ export function ProductsPage() {
       )}
     </div>
   );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="field" style={{ margin: 0 }}><label>{label}</label>{children}</div>;
 }

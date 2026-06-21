@@ -29,6 +29,11 @@ async function create(ctx, data) {
   }
   await assertCanAddUser(ctx.tenantId); // FR25
 
+  // e-mail único (mensagem clara em vez de erro de duplicidade do banco)
+  if (await knex('users').where({ email: data.email }).first()) {
+    throw Errors.validation('Já existe um acesso com este e-mail.');
+  }
+
   const id = uuid();
   const tempPass = password.generateTempPassword();
   const hash = await password.hash(tempPass);
