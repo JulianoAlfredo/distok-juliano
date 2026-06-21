@@ -10,14 +10,25 @@ const { Errors } = require('../../core/errors');
 const env = require('../../config/env');
 const { ROLES } = require('@distok/shared');
 
+// SVG foi removido propositalmente: pode conter <script> (vetor de XSS quando servido).
 const MIME_EXT = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
-  'image/svg+xml': 'svg',
   'image/x-icon': 'ico',
   'image/vnd.microsoft.icon': 'ico',
 };
+
+/** Confere a assinatura (magic bytes) do arquivo — impede renomear um HTML/SVG como .png. */
+function looksLikeImage(buf) {
+  if (!buf || buf.length < 4) return false;
+  const b = buf;
+  const png = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
+  const jpg = b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  const webp = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46; // RIFF
+  const ico = b[0] === 0x00 && b[1] === 0x00 && (b[2] === 0x01 || b[2] === 0x02);
+  return png || jpg || webp || ico;
+}
 
 /** Rotas autenticadas de branding/white-label (arch §9.3). */
 module.exports = async function brandingAdminRoutes(app) {
@@ -72,7 +83,7 @@ module.exports = async function brandingAdminRoutes(app) {
     if (!ext) {
       // descarta o stream para não vazar
       await data.toBuffer().catch(() => {});
-      throw Errors.validation('Formato inválido. Use PNG, JPG, WEBP, SVG ou ICO.');
+      throw Errors.validation('Formato inválido. Use PNG, JPG, WEBP ou ICO.');
     }
 
     const fieldName = (data.fields && data.fields.field && data.fields.field.value) || 'logo';
@@ -80,6 +91,7 @@ module.exports = async function brandingAdminRoutes(app) {
 
     const buffer = await data.toBuffer(); // respeita limite de 512KB do multipart
     if (buffer.length > 512 * 1024) throw Errors.validation('Arquivo acima de 512KB');
+    if (!looksLikeImage(buffer)) throw Errors.validation('O arquivo não parece ser uma imagem válida.');
 
     const dir = path.join(env.uploads.dir, req.ctx.tenantId);
     await fs.mkdir(dir, { recursive: true });

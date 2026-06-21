@@ -7,6 +7,7 @@ const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
 const password = require('../../utils/password');
 const { sendMail } = require('../../utils/mailer');
+const { htmlEscape } = require('../../utils/sanitize');
 const env = require('../../config/env');
 const { assertCanAddUser } = require('../../middlewares/plan-guard');
 const { ROLES, USER_STATUS } = require('@distok/shared');
@@ -29,9 +30,10 @@ async function create(ctx, data) {
   }
   await assertCanAddUser(ctx.tenantId); // FR25
 
-  // e-mail único (mensagem clara em vez de erro de duplicidade do banco)
+  // e-mail único — mensagem genérica (não revela existência da conta) + log interno
   if (await knex('users').where({ email: data.email }).first()) {
-    throw Errors.validation('Já existe um acesso com este e-mail.');
+    console.warn(`[users.create] e-mail já cadastrado (tenant ${ctx.tenantId})`);
+    throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
   }
 
   const id = uuid();
@@ -54,9 +56,9 @@ async function create(ctx, data) {
   await sendMail({
     to: data.email,
     subject: 'Seu acesso ao DISTOK',
-    html: `<p>Olá, ${data.name}!</p>
+    html: `<p>Olá, ${htmlEscape(data.name)}!</p>
            <p>Você recebeu acesso ao sistema.</p>
-           <p>Login: <b>${data.email}</b><br/>Senha temporária: <b>${tempPass}</b></p>
+           <p>Login: <b>${htmlEscape(data.email)}</b><br/>Senha temporária: <b>${htmlEscape(tempPass)}</b></p>
            <p>Acesse <a href="${env.APP_BASE_URL}">${env.APP_BASE_URL}</a> e troque a senha no primeiro acesso.</p>`,
   });
 

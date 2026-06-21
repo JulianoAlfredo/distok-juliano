@@ -19,9 +19,9 @@ module.exports = async function authRoutes(app) {
         type: 'object',
         required: ['email', 'password'],
         properties: {
-          email: { type: 'string', format: 'email' },
-          password: { type: 'string', minLength: 1 },
-          tenantSlug: { type: 'string' },
+          email: { type: 'string', format: 'email', maxLength: 254 },
+          password: { type: 'string', minLength: 1, maxLength: 128 },
+          tenantSlug: { type: 'string', maxLength: 63 },
         },
       },
     },
@@ -50,7 +50,7 @@ module.exports = async function authRoutes(app) {
         required: ['currentPassword', 'newPassword'],
         properties: {
           currentPassword: { type: 'string' },
-          newPassword: { type: 'string', minLength: 8 },
+          newPassword: { type: 'string', minLength: 8, maxLength: 128 },
         },
       },
     },
@@ -89,7 +89,7 @@ module.exports = async function authRoutes(app) {
         required: ['token', 'newPassword'],
         properties: {
           token: { type: 'string' },
-          newPassword: { type: 'string', minLength: 8 },
+          newPassword: { type: 'string', minLength: 8, maxLength: 128 },
         },
       },
     },

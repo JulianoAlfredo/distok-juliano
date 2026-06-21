@@ -6,6 +6,7 @@ const { Errors } = require('../../core/errors');
 const password = require('../../utils/password');
 const audit = require('../../utils/audit');
 const { sendMail } = require('../../utils/mailer');
+const { htmlEscape } = require('../../utils/sanitize');
 const env = require('../../config/env');
 const {
   ROLES, TENANT_STATUS, USER_STATUS, DEFAULT_TERMINOLOGY,
@@ -42,15 +43,14 @@ async function createTenant({ ctx, name, cnpj, slug, address, planCode, adminNam
   slug = slugify(slug || name);
   if (!slug) throw Errors.validation('Informe um nome válido para a empresa.');
 
-  // validações com mensagens claras (evita erro genérico de duplicidade)
-  if (await knex('tenants').where({ slug }).first()) {
-    throw Errors.validation('Já existe uma distribuidora com esse endereço (subdomínio). Escolha outro.');
-  }
-  if (cnpj && (await knex('tenants').where({ cnpj }).first())) {
-    throw Errors.validation('Já existe uma distribuidora com esse CNPJ.');
-  }
-  if (await knex('users').where({ email: adminEmail }).first()) {
-    throw Errors.validation('Esse e-mail de administrador já está em uso.');
+  // validações de duplicidade — mensagem genérica (não revela o que existe) + log interno
+  const dup =
+    (await knex('tenants').where({ slug }).first()) ||
+    (cnpj && (await knex('tenants').where({ cnpj }).first())) ||
+    (await knex('users').where({ email: adminEmail }).first());
+  if (dup) {
+    console.warn('[tenants.create] cadastro duplicado (slug/cnpj/e-mail)');
+    throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
   }
 
   const tenantId = uuid();
@@ -80,10 +80,10 @@ async function createTenant({ ctx, name, cnpj, slug, address, planCode, adminNam
   await sendMail({
     to: adminEmail,
     subject: 'Bem-vindo ao DISTOK — suas credenciais de acesso',
-    html: `<p>Olá, ${adminName}!</p>
-           <p>Sua distribuidora <b>${name}</b> foi cadastrada no DISTOK.</p>
-           <p>Acesse: <a href="https://${slug}.${env.ROOT_DOMAIN}">${slug}.${env.ROOT_DOMAIN}</a></p>
-           <p>Login: <b>${adminEmail}</b><br/>Senha temporária: <b>${tempPass}</b></p>
+    html: `<p>Olá, ${htmlEscape(adminName)}!</p>
+           <p>Sua distribuidora <b>${htmlEscape(name)}</b> foi cadastrada no DISTOK.</p>
+           <p>Acesse: <a href="https://${htmlEscape(slug)}.${env.ROOT_DOMAIN}">${htmlEscape(slug)}.${env.ROOT_DOMAIN}</a></p>
+           <p>Login: <b>${htmlEscape(adminEmail)}</b><br/>Senha temporária: <b>${htmlEscape(tempPass)}</b></p>
            <p>No primeiro acesso você deverá criar uma nova senha.</p>`,
   });
 

@@ -33,6 +33,17 @@ function readableOn(hex: string | null): string {
   return luminance > 0.6 ? '#0f172a' : '#ffffff';
 }
 
+/** Aceita só http(s) ou caminho relativo — bloqueia javascript:/data: (XSS). */
+function isSafeUrl(u: string | null): boolean {
+  if (!u) return false;
+  try {
+    const p = new URL(u, window.location.origin);
+    return p.protocol === 'http:' || p.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function applyBranding(branding: Branding) {
   const root = document.documentElement;
   if (branding.color_primary) {
@@ -41,7 +52,7 @@ function applyBranding(branding: Branding) {
   }
   if (branding.color_secondary) root.style.setProperty('--color-secondary', branding.color_secondary);
   if (branding.color_accent) root.style.setProperty('--color-accent', branding.color_accent);
-  if (branding.favicon_url) {
+  if (branding.favicon_url && isSafeUrl(branding.favicon_url)) {
     let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
     if (!link) {
       link = document.createElement('link');
@@ -85,7 +96,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     api
       .get('/public/tenant-theme', { params: slug ? { slug } : {} })
       .then((res) => {
-        const { tenant, branding, terminology } = res.data;
+        const { tenant, terminology } = res.data;
+        const raw = res.data.branding || {};
+        const branding = {
+          ...raw,
+          logo_url: isSafeUrl(raw.logo_url) ? raw.logo_url : null,
+          favicon_url: isSafeUrl(raw.favicon_url) ? raw.favicon_url : null,
+        };
         applyBranding(branding);
         setState({
           loading: false,

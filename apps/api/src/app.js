@@ -25,12 +25,30 @@ async function buildApp() {
     trustProxy: true, // Hostinger/Passenger atrás de proxy => req.ip correto
   });
 
-  await app.register(require('@fastify/helmet'), { contentSecurityPolicy: false });
+  // Headers de segurança + CSP (permite Google Fonts e estilos inline do app).
+  await app.register(require('@fastify/helmet'), {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  });
   await app.register(require('@fastify/cors'), {
     origin: env.isProd ? [env.APP_BASE_URL] : true,
     credentials: true,
   });
-  await app.register(require('@fastify/rate-limit'), { global: false, max: 100, timeWindow: '1 minute' });
+  // Rate limit global (anti brute-force/DoS). Rotas sensíveis (/auth) reforçam por rota.
+  await app.register(require('@fastify/rate-limit'), { global: true, max: 300, timeWindow: '1 minute' });
   await app.register(require('@fastify/multipart'), { limits: { fileSize: 512 * 1024 } });
 
   // serve os uploads (logos/favicons) — white-label
