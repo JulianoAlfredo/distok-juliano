@@ -1,4 +1,5 @@
-import { useState, FormEvent, ReactNode } from 'react';
+import { useState, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { api, setToken } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 
@@ -10,14 +11,17 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const name = branding.display_name || 'DISTOK';
+
   // tenant suspenso/inativo => bloqueio (UX §5.1)
   if (tenant && tenant.status !== 'active') {
     return (
-      <Centered>
-        <div className="card" style={{ textAlign: 'center', maxWidth: 380 }}>
-          <p>Acesso suspenso. Fale com o administrador da sua distribuidora.</p>
+      <AuthLayout name={name}>
+        <div className="auth-card card card-pad-lg" style={{ textAlign: 'center' }}>
+          <h2 style={{ marginBottom: 'var(--sp-2)' }}>Acesso suspenso</h2>
+          <p className="muted">Fale com o administrador da sua distribuidora para reativar o acesso.</p>
         </div>
-      </Centered>
+      </AuthLayout>
     );
   }
 
@@ -46,53 +50,61 @@ export function LoginPage() {
   }
 
   return (
-    <Centered>
-      <form className="card" style={{ width: 380, maxWidth: '90vw' }} onSubmit={onSubmit}>
+    <AuthLayout name={name}>
+      <form className="auth-card card card-pad-lg" onSubmit={onSubmit}>
         <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
           {branding.logo_url ? (
-            <img src={branding.logo_url} alt="logo" style={{ maxHeight: 56 }} />
+            <img src={branding.logo_url} alt={name} style={{ maxHeight: 52 }} />
           ) : (
-            <h1 style={{ color: 'var(--color-primary)', margin: 0 }}>
-              {loading ? '...' : branding.display_name || 'DISTOK'}
-            </h1>
+            <h1 style={{ color: 'var(--color-primary)', fontSize: 'var(--fs-2xl)' }}>{loading ? '…' : name}</h1>
           )}
-          <p style={{ color: 'var(--color-text-mut)', marginTop: 'var(--sp-2)' }}>
-            Bem-vindo{branding.display_name ? ` à ${branding.display_name}` : ''}
-          </p>
+          <p className="muted mt-2">Entre na sua conta para continuar</p>
         </div>
 
         <div className="field">
           <label htmlFor="email">E-mail</label>
-          <input id="email" className="input" type="email" value={email}
-            onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
+          <input id="email" className="input" type="email" placeholder="voce@empresa.com" value={email}
+            onChange={(e) => setEmail(e.target.value)} required autoComplete="username" autoFocus />
         </div>
         <div className="field">
           <label htmlFor="pwd">Senha</label>
-          <input id="pwd" className="input" type="password" value={pwd}
+          <input id="pwd" className="input" type="password" placeholder="••••••••" value={pwd}
             onChange={(e) => setPwd(e.target.value)} required autoComplete="current-password" />
         </div>
 
         {error && <div className="error-text" role="alert">{error}</div>}
 
-        <button className="btn btn-primary" style={{ width: '100%', marginTop: 'var(--sp-4)' }}
-          type="submit" disabled={submitting}>
-          {submitting ? 'Entrando...' : 'Entrar'}
+        <button className="btn btn-primary btn-block mt-4" type="submit" disabled={submitting}>
+          {submitting ? <><span className="spin" style={{ borderTopColor: 'var(--on-primary)' }} /> Entrando…</> : 'Entrar'}
         </button>
 
         <div style={{ textAlign: 'center', marginTop: 'var(--sp-4)' }}>
-          <a href="/esqueci-senha" style={{ color: 'var(--color-primary)', fontSize: 'var(--fs-sm)' }}>
-            Esqueci minha senha →
-          </a>
+          <Link to="/esqueci-senha" style={{ fontSize: 'var(--fs-sm)' }}>Esqueci minha senha</Link>
         </div>
       </form>
-    </Centered>
+    </AuthLayout>
   );
 }
 
-function Centered({ children }: { children: ReactNode }) {
+/** Layout split: painel da marca à esquerda, formulário à direita. */
+export function AuthLayout({ children, name }: { children: React.ReactNode; name: string }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 'var(--sp-4)' }}>
-      {children}
+    <div className="auth">
+      <div className="auth-aside">
+        <div style={{ fontWeight: 800, fontSize: 'var(--fs-xl)', letterSpacing: '-0.02em' }}>{name}</div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h2 style={{ fontSize: 32, lineHeight: 1.2, marginBottom: 'var(--sp-3)' }}>
+            Controle total do seu estoque, em tempo real.
+          </h2>
+          <p style={{ color: 'rgba(255,255,255,0.78)', maxWidth: 380 }}>
+            Movimentações, saldo, relatórios e auditoria — tudo num só lugar, com a cara da sua distribuidora.
+          </p>
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 'var(--fs-xs)' }}>
+          © {new Date().getFullYear()} {name}
+        </div>
+      </div>
+      <div className="auth-main">{children}</div>
     </div>
   );
 }

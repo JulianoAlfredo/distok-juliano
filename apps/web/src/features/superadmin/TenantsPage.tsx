@@ -1,25 +1,25 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
+import { PageHeader, StatusBadge, EmptyState } from '../../components/ui';
+import { useToast } from '../../components/ui/Toast';
+import { IconBuilding, IconPlus } from '../../components/ui/icons';
 
 type Tenant = {
-  id: string;
-  name: string;
-  slug: string;
-  cnpj: string;
-  status: string;
-  plan_code: string;
-  plan_name: string;
+  id: string; name: string; slug: string; cnpj: string;
+  status: string; plan_code: string; plan_name: string;
 };
 type Metrics = { tenants: number; active: number; mrr: number; byPlan: { plan: string; count: number }[] };
 
 const EMPTY = { name: '', cnpj: '', slug: '', address: '', planCode: 'basic', adminName: '', adminEmail: '' };
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function TenantsPage() {
+  const toast = useToast();
   const [items, setItems] = useState<Tenant[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [form, setForm] = useState<any>(null);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const [t, m] = await Promise.all([
@@ -32,101 +32,107 @@ export function TenantsPage() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [statusFilter]);
 
   async function create() {
-    setMsg(null);
+    setSaving(true);
     try {
       await api.post('/admin/tenants', form);
       setForm(null);
-      setMsg({ ok: true, text: 'Distribuidora criada! Credenciais enviadas ao admin por e-mail.' });
+      toast.push('Distribuidora criada! Credenciais enviadas ao admin.', 'success');
       await load();
     } catch (e: any) {
-      setMsg({ ok: false, text: e.response?.data?.error?.message || 'Erro ao criar.' });
+      toast.push(e.response?.data?.error?.message || 'Erro ao criar distribuidora.', 'error');
+    } finally {
+      setSaving(false);
     }
   }
 
   async function setStatus(id: string, status: string) {
     await api.patch(`/admin/tenants/${id}/status`, { status });
+    toast.push(status === 'active' ? 'Distribuidora ativada.' : 'Distribuidora suspensa.', 'success');
     await load();
   }
 
   async function resetPwd(id: string) {
     if (!confirm('Resetar a senha do admin desta distribuidora?')) return;
     await api.post(`/admin/tenants/${id}/reset-admin-password`);
-    setMsg({ ok: true, text: 'Senha temporária enviada ao admin por e-mail.' });
+    toast.push('Senha temporária enviada ao admin por e-mail.', 'success');
   }
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Distribuidoras</h2>
+      <PageHeader
+        title="Distribuidoras"
+        subtitle="Gerencie os clientes (tenants) da plataforma"
+        actions={!form && <button className="btn btn-primary" onClick={() => setForm({ ...EMPTY })}><IconPlus width={16} height={16} /> Nova distribuidora</button>}
+      />
 
       {metrics && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)' }}>
-          <Stat label="Tenants" value={String(metrics.tenants)} />
-          <Stat label="Ativos" value={String(metrics.active)} />
-          <Stat label="MRR estimado" value={`R$ ${metrics.mrr.toFixed(2)}`} />
+        <div className="stat-grid" style={{ marginBottom: 'var(--sp-6)' }}>
+          <div className="stat"><div className="row-between"><span className="stat-label">Distribuidoras</span><span className="stat-ico"><IconBuilding /></span></div><div className="stat-value">{metrics.tenants}</div></div>
+          <div className="stat"><div className="row-between"><span className="stat-label">Ativas</span></div><div className="stat-value">{metrics.active}</div></div>
+          <div className="stat"><div className="row-between"><span className="stat-label">MRR estimado</span></div><div className="stat-value">{brl(metrics.mrr)}</div></div>
         </div>
       )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-3)' }}>
-        <select className="input" style={{ maxWidth: 200 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">Todos os status</option>
-          <option value="active">Ativos</option>
-          <option value="suspended">Suspensos</option>
-          <option value="inactive">Inativos</option>
-        </select>
-        <button className="btn btn-primary" onClick={() => setForm({ ...EMPTY })}>+ Nova distribuidora</button>
-      </div>
-
-      {msg && <div style={{ color: msg.ok ? 'var(--color-success)' : 'var(--color-danger)', marginBottom: 'var(--sp-3)' }}>{msg.text}</div>}
 
       {form && (
-        <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
-          <h3 style={{ marginTop: 0 }}>Nova distribuidora</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
-            <F label="Nome*"><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></F>
-            <F label="CNPJ*"><input className="input" value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></F>
-            <F label="Slug (subdomínio)*"><input className="input" value={form.slug} placeholder="ex: bebidassul" onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })} /></F>
-            <F label="Plano"><select className="input" value={form.planCode} onChange={(e) => setForm({ ...form, planCode: e.target.value })}><option value="basic">Básico</option><option value="pro">Pro</option></select></F>
-            <F label="Nome do admin*"><input className="input" value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} /></F>
-            <F label="E-mail do admin*"><input className="input" type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} /></F>
+        <div className="card mt-0" style={{ marginBottom: 'var(--sp-6)' }}>
+          <h3 style={{ marginBottom: 'var(--sp-4)' }}>Nova distribuidora</h3>
+          <div className="grid-2">
+            <Field label="Nome*"><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+            <Field label="CNPJ*"><input className="input" value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></Field>
+            <Field label="Slug (subdomínio)*"><input className="input" value={form.slug} placeholder="ex: bebidassul" onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })} /></Field>
+            <Field label="Plano"><select className="input" value={form.planCode} onChange={(e) => setForm({ ...form, planCode: e.target.value })}><option value="basic">Básico</option><option value="pro">Pro</option></select></Field>
+            <Field label="Nome do admin*"><input className="input" value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} /></Field>
+            <Field label="E-mail do admin*"><input className="input" type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} /></Field>
           </div>
-          <button className="btn btn-primary" onClick={create}>Criar</button>
-          <button className="btn" style={{ marginLeft: 'var(--sp-2)', border: '1px solid var(--color-border)' }} onClick={() => setForm(null)}>Cancelar</button>
+          <div className="row mt-4">
+            <button className="btn btn-primary" onClick={create} disabled={saving}>{saving ? 'Criando…' : 'Criar distribuidora'}</button>
+            <button className="btn" onClick={() => setForm(null)}>Cancelar</button>
+          </div>
         </div>
       )}
 
-      <div className="card" style={{ padding: 0 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>
-            <Th>Distribuidora</Th><Th>CNPJ</Th><Th>Plano</Th><Th>Status</Th><Th>Ações</Th>
-          </tr></thead>
-          <tbody>
-            {items.map((t) => (
-              <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <Td>{t.name} <span style={{ color: 'var(--color-text-mut)' }}>· {t.slug}</span></Td>
-                <Td>{t.cnpj}</Td>
-                <Td>{t.plan_name}</Td>
-                <Td>{t.status === 'active' ? '🟢 ativo' : t.status === 'suspended' ? '🟠 suspenso' : '⚪ inativo'}</Td>
-                <Td>
-                  {t.status === 'active'
-                    ? <Mini onClick={() => setStatus(t.id, 'suspended')}>Suspender</Mini>
-                    : <Mini onClick={() => setStatus(t.id, 'active')}>Ativar</Mini>}
-                  <Mini onClick={() => resetPwd(t.id)}>Resetar senha</Mini>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="row" style={{ marginBottom: 'var(--sp-4)' }}>
+        <select className="input" style={{ maxWidth: 220 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Todos os status</option>
+          <option value="active">Ativas</option>
+          <option value="suspended">Suspensas</option>
+          <option value="inactive">Inativas</option>
+        </select>
       </div>
+
+      {items.length === 0 ? (
+        <div className="card"><EmptyState icon={<IconBuilding />} title="Nenhuma distribuidora" hint="Crie a primeira distribuidora para começar." /></div>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>Distribuidora</th><th>CNPJ</th><th>Plano</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              {items.map((t) => (
+                <tr key={t.id}>
+                  <td><div style={{ fontWeight: 600 }}>{t.name}</div><div className="faint" style={{ fontSize: 'var(--fs-xs)' }}>{t.slug}</div></td>
+                  <td className="muted">{t.cnpj}</td>
+                  <td><span className="badge badge-neutral">{t.plan_name}</span></td>
+                  <td><StatusBadge status={t.status} /></td>
+                  <td>
+                    <div className="row" style={{ gap: 'var(--sp-2)' }}>
+                      {t.status === 'active'
+                        ? <button className="btn btn-sm" onClick={() => setStatus(t.id, 'suspended')}>Suspender</button>
+                        : <button className="btn btn-sm" onClick={() => setStatus(t.id, 'active')}>Ativar</button>}
+                      <button className="btn btn-sm" onClick={() => resetPwd(t.id)}>Resetar senha</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="card" style={{ padding: 'var(--sp-4)' }}><div style={{ color: 'var(--color-text-mut)', fontSize: 'var(--fs-sm)' }}>{label}</div><div style={{ fontSize: 'var(--fs-xl)', fontWeight: 700 }}>{value}</div></div>;
-}
-function F({ label, children }: { label: string; children: React.ReactNode }) { return <div className="field" style={{ margin: 0 }}><label>{label}</label>{children}</div>; }
-function Th({ children }: { children?: React.ReactNode }) { return <th style={{ padding: 'var(--sp-3)' }}>{children}</th>; }
-function Td({ children }: { children?: React.ReactNode }) { return <td style={{ padding: 'var(--sp-3)' }}>{children}</td>; }
-function Mini({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return <button className="btn" style={{ border: '1px solid var(--color-border)', padding: '4px 8px', marginRight: 4 }} onClick={onClick}>{children}</button>;
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="field" style={{ margin: 0 }}><label>{label}</label>{children}</div>;
 }

@@ -10,7 +10,13 @@ const audit = require('../../utils/audit');
 const env = require('../../config/env');
 const { ROLES, TENANT_STATUS, USER_STATUS } = require('@distok/shared');
 
-/** Busca usuário por e-mail dentro de um tenant (ou super_admin quando slug ausente). */
+/**
+ * Busca usuário por e-mail para login.
+ *  - Com tenantSlug (subdomínio/domínio próprio): restringe ao tenant.
+ *  - Sem tenantSlug (domínio único, sem subdomínio): busca global por e-mail.
+ *    Super admin tem precedência; se houver exatamente um usuário, usa-o.
+ *    E-mail repetido em múltiplos tenants => ambíguo (exige slug).
+ */
 async function findUserForLogin(email, tenantSlug) {
   if (tenantSlug) {
     const tenant = await knex('tenants').where({ slug: tenantSlug }).first();
@@ -18,9 +24,18 @@ async function findUserForLogin(email, tenantSlug) {
     const user = await knex('users').where({ email, tenant_id: tenant.id }).first();
     return { user, tenant };
   }
-  // sem slug: tenta super_admin (tenant_id NULL)
-  const user = await knex('users').where({ email }).whereNull('tenant_id').first();
-  return { user, tenant: null };
+  // sem slug: login global por e-mail
+  const matches = await knex('users').where({ email });
+  if (matches.length === 0) return { user: null, tenant: null };
+  const superAdmin = matches.find((u) => u.tenant_id === null);
+  if (superAdmin) return { user: superAdmin, tenant: null };
+  if (matches.length === 1) {
+    const user = matches[0];
+    const tenant = await knex('tenants').where({ id: user.tenant_id }).first();
+    return { user, tenant };
+  }
+  // e-mail presente em mais de um tenant: não dá para decidir sem o slug
+  return { user: null, tenant: null, ambiguous: true };
 }
 
 async function login({ email, password: plain, tenantSlug }) {

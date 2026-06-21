@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
+import { PageHeader, Loading, EmptyState } from '../../components/ui';
+import { IconBox, IconAlert, IconLayers, IconArrowUp, IconArrowDown } from '../../components/ui/icons';
 
 type Summary = {
   productsActive: number;
@@ -9,6 +11,8 @@ type Summary = {
   lastMovements: any[];
   entriesVsExits: { day: string; type: string; total: number }[];
 };
+
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function DashboardPage() {
   const { t } = useTheme();
@@ -19,52 +23,68 @@ export function DashboardPage() {
     api.get('/dashboard/summary').then(({ data }) => { setS(data); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Carregando dashboard...</div>;
-  if (!s) return <div>Não foi possível carregar o dashboard.</div>;
+  if (loading) return <Loading label="Carregando dashboard…" />;
+  if (!s) return <EmptyState icon={<IconAlert />} title="Não foi possível carregar o dashboard" hint="Tente recarregar a página." />;
+
+  const moved = s.entriesVsExits.reduce((a, x) => a + x.total, 0);
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Dashboard</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
-        <Stat label={`${t('product')}s ativos`} value={String(s.productsActive)} />
-        <Stat label="Abaixo do mínimo" value={String(s.belowMin)} danger={s.belowMin > 0} />
-        <Stat label="Valor em estoque" value={`R$ ${s.stockValue.toFixed(2)}`} />
-        <Stat label="Itens movimentados (7d)" value={String(s.entriesVsExits.reduce((a, x) => a + x.total, 0))} />
+      <PageHeader title="Dashboard" subtitle="Visão geral do seu estoque em tempo real" />
+
+      <div className="stat-grid">
+        <Stat label={`${t('product')}s ativos`} value={String(s.productsActive)} icon={<IconBox />} />
+        <Stat label="Abaixo do mínimo" value={String(s.belowMin)} icon={<IconAlert />} danger={s.belowMin > 0} />
+        <Stat label="Valor em estoque" value={brl(s.stockValue)} icon={<IconLayers />} />
+        <Stat label="Movimentado (7 dias)" value={String(moved)} icon={<IconArrowUp />} />
       </div>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Últimas movimentações</h3>
+      <div className="card mt-6" style={{ padding: 0 }}>
+        <div className="row-between" style={{ padding: 'var(--sp-5) var(--sp-6)' }}>
+          <h3>Últimas movimentações</h3>
+        </div>
         {s.lastMovements.length === 0 ? (
-          <p style={{ color: 'var(--color-text-mut)' }}>Sem movimentações ainda.</p>
+          <EmptyState icon={<IconLayers />} title="Sem movimentações ainda" hint="As entradas e saídas aparecerão aqui." />
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>
-              <th style={{ padding: 8 }}>Data</th><th style={{ padding: 8 }}>Produto</th><th style={{ padding: 8 }}>Tipo</th><th style={{ padding: 8 }}>Qtd</th><th style={{ padding: 8 }}>Saldo</th><th style={{ padding: 8 }}>Quem</th>
-            </tr></thead>
-            <tbody>
-              {s.lastMovements.map((m, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: 8 }}>{new Date(m.created_at).toLocaleString('pt-BR')}</td>
-                  <td style={{ padding: 8 }}>{m.product || '—'}</td>
-                  <td style={{ padding: 8 }}>{m.type === 'entry' ? 'entrada' : m.type === 'exit' ? 'saída' : 'ajuste'}</td>
-                  <td style={{ padding: 8 }}>{m.quantity}</td>
-                  <td style={{ padding: 8 }}>{m.balance_after}</td>
-                  <td style={{ padding: 8 }}>{m.user_name || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table">
+              <thead>
+                <tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd</th><th>Saldo</th><th>Responsável</th></tr>
+              </thead>
+              <tbody>
+                {s.lastMovements.map((m, i) => (
+                  <tr key={i}>
+                    <td className="muted">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                    <td style={{ fontWeight: 500 }}>{m.product || '—'}</td>
+                    <td><MovType type={m.type} /></td>
+                    <td>{m.quantity}</td>
+                    <td style={{ fontWeight: 600 }}>{m.balance_after}</td>
+                    <td className="muted">{m.user_name || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+function Stat({ label, value, icon, danger }: { label: string; value: string; icon: React.ReactNode; danger?: boolean }) {
   return (
-    <div className="card" style={{ padding: 'var(--sp-4)' }}>
-      <div style={{ color: 'var(--color-text-mut)', fontSize: 'var(--fs-sm)' }}>{label}</div>
-      <div style={{ fontSize: 'var(--fs-xl)', fontWeight: 700, color: danger ? 'var(--color-danger)' : 'var(--color-text)' }}>{value}</div>
+    <div className="stat">
+      <div className="row-between">
+        <span className="stat-label">{label}</span>
+        <span className="stat-ico" style={danger ? { background: 'var(--color-danger-soft)', color: 'var(--color-danger)' } : undefined}>{icon}</span>
+      </div>
+      <div className="stat-value" style={danger ? { color: 'var(--color-danger)' } : undefined}>{value}</div>
     </div>
   );
+}
+
+function MovType({ type }: { type: string }) {
+  if (type === 'entry') return <span className="badge badge-success"><IconArrowUp width={12} height={12} /> Entrada</span>;
+  if (type === 'exit') return <span className="badge badge-danger"><IconArrowDown width={12} height={12} /> Saída</span>;
+  return <span className="badge badge-info">Ajuste</span>;
 }
