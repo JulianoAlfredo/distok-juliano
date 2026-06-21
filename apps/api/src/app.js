@@ -62,6 +62,25 @@ async function buildApp() {
   app.register(tenantsRoutes, { prefix: '/api/v1/admin' });
   app.register(plansRoutes, { prefix: '/api/v1/admin' });
 
+  // ---------- Frontend (SPA) servido pelo mesmo app ----------
+  // Em produção a API e o front compartilham origem: o build do React
+  // (apps/web/dist) é servido na raiz; /api/v1 e /uploads continuam acima.
+  // Rotas de navegação do React Router caem no index.html (SPA fallback).
+  const webDist = path.resolve(__dirname, '../../web/dist');
+  if (fs.existsSync(webDist)) {
+    await app.register(require('@fastify/static'), {
+      root: webDist,
+      prefix: '/',
+      wildcard: false,
+    });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api') && !req.url.startsWith('/uploads')) {
+        return reply.sendFile('index.html');
+      }
+      return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada' } });
+    });
+  }
+
   return app;
 }
 

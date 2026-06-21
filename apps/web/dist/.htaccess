@@ -1,0 +1,11 @@
+# SPA fallback — Hostinger/Apache (arch §10.2)
+# Encaminha /api para o Node app (ajuste a porta/host conforme o Setup Node.js App)
+RewriteEngine On
+
+# proxy reverso opcional para a API (se a API roda no mesmo domínio em :3000)
+# RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
+
+# tudo que não for arquivo/dir existente cai no index.html (React Router)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
