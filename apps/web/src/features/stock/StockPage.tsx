@@ -13,17 +13,18 @@ type Balance = {
 type Product = { id: string; name: string; sku: string | null };
 
 export function StockPage() {
-  const [tab, setTab] = useState<'lancar' | 'saldo'>('lancar');
+  const [tab, setTab] = useState<'lancar' | 'saldo' | 'historico'>('lancar');
   const { t } = useTheme();
   return (
     <div>
       <PageHeader title={t('stock')} subtitle="Entradas, saídas, ajustes e saldo atual" />
       <div className="seg" style={{ marginBottom: 'var(--sp-5)' }}>
         <style>{segCss}</style>
-        <button className={`seg-btn${tab === 'lancar' ? ' active' : ''}`} onClick={() => setTab('lancar')}>Lançar movimentação</button>
-        <button className={`seg-btn${tab === 'saldo' ? ' active' : ''}`} onClick={() => setTab('saldo')}>Saldo atual</button>
+        <button className={`seg-btn${tab === 'lancar'   ? ' active' : ''}`} onClick={() => setTab('lancar')}>Lançar</button>
+        <button className={`seg-btn${tab === 'saldo'    ? ' active' : ''}`} onClick={() => setTab('saldo')}>Saldo</button>
+        <button className={`seg-btn${tab === 'historico'? ' active' : ''}`} onClick={() => setTab('historico')}>Histórico</button>
       </div>
-      {tab === 'lancar' ? <LaunchForm /> : <BalanceList />}
+      {tab === 'lancar' ? <LaunchForm /> : tab === 'saldo' ? <BalanceList /> : <MovementHistory />}
     </div>
   );
 }
@@ -214,6 +215,85 @@ function BalanceList() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MovementHistory() {
+  const [items, setItems]       = useState<any[]>([]);
+  const [total, setTotal]       = useState(0);
+  const [pages, setPages]       = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [typeFilter, setTypeFilter]   = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
+  const [loading, setLoading]   = useState(true);
+
+  async function load(p = currentPage) {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/stock/movements', {
+        params: {
+          type: typeFilter || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          page: p,
+        },
+      });
+      setItems(data.items); setTotal(data.total); setPages(data.pages);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(1); setCurrentPage(1); /* eslint-disable-next-line */ }, [typeFilter]);
+  useEffect(() => { load(currentPage); /* eslint-disable-next-line */ }, [currentPage]);
+
+  return (
+    <div>
+      <div className="row" style={{ marginBottom: 'var(--sp-4)', flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
+        <div className="seg">
+          <button className={`seg-btn${typeFilter === ''           ? ' active' : ''}`} onClick={() => setTypeFilter('')}>Todos</button>
+          <button className={`seg-btn${typeFilter === 'entry'      ? ' active' : ''}`} onClick={() => setTypeFilter('entry')}>Entradas</button>
+          <button className={`seg-btn${typeFilter === 'exit'       ? ' active' : ''}`} onClick={() => setTypeFilter('exit')}>Saídas</button>
+          <button className={`seg-btn${typeFilter === 'adjustment' ? ' active' : ''}`} onClick={() => setTypeFilter('adjustment')}>Ajustes</button>
+        </div>
+        <div className="row" style={{ gap: 'var(--sp-2)' }}>
+          <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={{ width: 150 }} title="De" />
+          <span className="muted">até</span>
+          <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={{ width: 150 }} title="Até" />
+          <button className="btn" onClick={() => { setCurrentPage(1); load(1); }}>Filtrar</button>
+        </div>
+      </div>
+
+      {loading ? <div style={{ padding: 'var(--sp-8)', textAlign: 'center' }}><span className="spin" /></div> : items.length === 0 ? (
+        <div className="card"><EmptyState icon={<IconLayers />} title="Nenhuma movimentação encontrada" hint="Ajuste os filtros para ver resultados." /></div>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd</th><th>Saldo</th><th>Responsável</th><th>Motivo</th></tr></thead>
+            <tbody>
+              {items.map((m: any) => (
+                <tr key={m.id}>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                  <td style={{ fontWeight: 500 }}>{m.product_name || '—'}</td>
+                  <td>
+                    {m.type === 'entry'      && <span className="badge badge-success">Entrada</span>}
+                    {m.type === 'exit'       && <span className="badge badge-danger">Saída</span>}
+                    {m.type === 'adjustment' && <span className="badge badge-info">Ajuste</span>}
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{m.quantity}</td>
+                  <td>{m.balance_after}</td>
+                  <td className="muted">{m.user_name || '—'}</td>
+                  <td className="muted">{m.reason || m.note || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="pagination">
+            <span className="pagination-info">{total} movimentação{total !== 1 ? 'ões' : ''} — página {currentPage} de {pages}</span>
+            <button className="btn btn-sm" disabled={currentPage <= 1}    onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
+            <button className="btn btn-sm" disabled={currentPage >= pages} onClick={() => setCurrentPage((p) => p + 1)}>Próxima →</button>
           </div>
         </div>
       )}

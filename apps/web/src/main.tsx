@@ -20,6 +20,13 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { TenantsPage } from './features/superadmin/TenantsPage';
 import { PlansPage } from './features/superadmin/PlansPage';
+import { CustomersPage }  from './features/customers/CustomersPage';
+import { SuppliersPage } from './features/suppliers/SuppliersPage';
+import { CatalogPage }    from './features/catalog/CatalogPage';
+import { PurchasesPage } from './features/purchases/PurchasesPage';
+import { SalesPage }     from './features/sales/SalesPage';
+import { CashierPage }    from './features/cashier/CashierPage';
+import { FinancialPage }  from './features/financial/FinancialPage';
 import { getToken } from './api/client';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -53,6 +60,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/marca" element={<RequireAuth><BrandingEditor /></RequireAuth>} />
               <Route path="/produtos" element={<RequireAuth><ProductsPage /></RequireAuth>} />
               <Route path="/estoque" element={<RequireAuth><StockPage /></RequireAuth>} />
+              <Route path="/clientes"     element={<RequireAuth><CustomersPage /></RequireAuth>} />
+              <Route path="/fornecedores" element={<RequireAuth><SuppliersPage /></RequireAuth>} />
+              <Route path="/cadastros"    element={<RequireAuth><CatalogPage /></RequireAuth>} />
+              <Route path="/compras"      element={<RequireAuth><PurchasesPage /></RequireAuth>} />
+              <Route path="/vendas"       element={<RequireAuth><SalesPage /></RequireAuth>} />
+              <Route path="/caixa"        element={<RequireAuth><CashierPage /></RequireAuth>} />
+              <Route path="/financeiro"   element={<RequireAuth><FinancialPage /></RequireAuth>} />
               <Route path="/funcionarios" element={<RequireAuth><UsersPage /></RequireAuth>} />
               <Route path="/admin/tenants" element={<RequireAuth><TenantsPage /></RequireAuth>} />
               <Route path="/admin/planos" element={<RequireAuth><PlansPage /></RequireAuth>} />

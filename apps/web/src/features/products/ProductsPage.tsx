@@ -9,6 +9,8 @@ import { FieldLabel } from '../../components/ui/Hint';
 import { formatBRL } from '../../lib/format';
 import { IconBox, IconPlus, IconSearch } from '../../components/ui/icons';
 
+type CatalogItem = { id: string; name: string; symbol?: string };
+
 type Product = {
   id: string; name: string; sku: string | null; category: string | null; unit: string;
   cost_price: number; sale_price: number; min_stock: number; status: string; margin: number | null;
@@ -24,8 +26,10 @@ export function ProductsPage() {
   const [search, setSearch] = useState('');
   const [form, setForm] = useState<any>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [categories, setCategories] = useState<CatalogItem[]>([]);
+  const [units, setUnits]           = useState<CatalogItem[]>([]);
   const term = t('product').toLowerCase();
 
   async function load() {
@@ -34,7 +38,12 @@ export function ProductsPage() {
     setItems(data);
     setLoading(false);
   }
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    load();
+    api.get('/catalog/categories').then(({ data }) => setCategories(data)).catch(() => {});
+    api.get('/catalog/units').then(({ data }) => setUnits(data)).catch(() => {});
+    /* eslint-disable-next-line */
+  }, []);
 
   const margin = form && Number(form.cost_price) > 0
     ? Math.round(((Number(form.sale_price) - Number(form.cost_price)) / Number(form.cost_price)) * 10000) / 100
@@ -100,11 +109,24 @@ export function ProductsPage() {
             </div>
             <div className="field" style={{ margin: 0 }}>
               <FieldLabel hint="Agrupa itens parecidos (ex.: Bebidas, Limpeza). Opcional.">Categoria</FieldLabel>
-              <input className="input" placeholder="Ex.: Bebidas" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+              {categories.length > 0 ? (
+                <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  <option value="">Sem categoria</option>
+                  {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              ) : (
+                <input className="input" placeholder="Ex.: Bebidas" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+              )}
             </div>
             <div className="field" style={{ margin: 0 }}>
-              <FieldLabel hint="Como você conta o item: unidade (un), caixa (cx), pacote (pct)...">Unidade</FieldLabel>
-              <input className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+              <FieldLabel hint="Como você conta o item: unidade (un), caixa (cx), kg...">Unidade</FieldLabel>
+              {units.length > 0 ? (
+                <select className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
+                  {units.map((u) => <option key={u.id} value={u.symbol}>{u.name} ({u.symbol})</option>)}
+                </select>
+              ) : (
+                <input className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+              )}
             </div>
             <div className="field" style={{ margin: 0 }}>
               <FieldLabel hint="Quanto você paga por este item.">Preço de custo</FieldLabel>

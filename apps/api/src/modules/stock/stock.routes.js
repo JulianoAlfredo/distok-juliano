@@ -52,4 +52,11 @@ module.exports = async function stockRoutes(app) {
     const { page } = req.query;
     return service.listMovements(req.ctx, req.params.id, { page: page ? Number(page) : 1 });
   });
+
+  // Histórico geral de movimentações com filtros
+  app.get('/movements', authed, async (req) => {
+    req.ctx.ip = req.ip;
+    const { type, productId, dateFrom, dateTo, page } = req.query;
+    return service.listAllMovements(req.ctx, { type, productId, dateFrom, dateTo, page: page ? Number(page) : 1 });
+  });
 };

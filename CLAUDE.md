@@ -1,0 +1,76 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+DISTOK — multi-tenant SaaS inventory management for distributors. Node.js/Fastify API (`apps/api`), React/Vite/TS frontend (`apps/web`), shared enums (`packages/shared`). MySQL (Hostinger-hosted) via Knex. Stack is locked: MySQL only (no Postgres/Supabase/RLS), deployed as a Node app on Hostinger (Passenger). See `docs/architecture.md` for the full spec and `docs/prd.md`/`docs/ux-design.md`/`docs/workflow.md` for product/design/process context.
+
+## Commands
+
+```bash
+npm install                   # installs all workspaces
+cp .env.example .env          # configure DB_*, JWT_SECRET (root .env, loaded by apps/api/src/config/env.js)
+npm run migrate                # apply Knex migrations
+npm run seed                   # demo data: 1 super admin, 2 tenants
+npm run dev                    # api (:3000) + web (:5173) concurrently
+npm run dev:api / npm run dev:web   # run one side only
+npm run build                  # builds apps/web (vite build -> apps/web/dist, served by the API in prod)
+npm run lint                    # ESLint flat config — includes the tenant anti-bypass rule
+npm test                        # runs apps/api tests (node --test)
+npm run migrate:test            # migrations against the test DB (NODE_ENV=test, DB_TEST_NAME)
+```
+
+Run a single API test file directly:
+```bash
+cd apps/api && cross-env NODE_ENV=test node --test tests/stock/stock.service.test.js
+```
+
+Frontend-only checks:
+```bash
+cd apps/web && npm run typecheck   # tsc --noEmit
+```
+
+There is no API typecheck (apps/api is plain CommonJS JS, no TS).
+
+## Architecture
+
+### Layering
+`routes -> services -> repositories (TenantScopedRepository)`, with middleware chain `tenant-resolver -> auth(JWT) -> rbac -> plan-guard -> handler -> audit`. Each business domain lives under `apps/api/src/modules/<name>/` as `<name>.routes.js` + `<name>.service.js` (+ `.admin.routes.js` where there's a separate admin surface, e.g. branding).
+
+### Multi-tenant isolation — the most important invariant
+MySQL on Hostinger has no RLS, so tenant isolation is enforced entirely in application code through **one chokepoint**:
+
+- `apps/api/src/core/TenantContext.js` — built by the auth middleware strictly from the JWT (`tid`, `sub`, `role`). Never trust tenant info from request body/query/params.
+- `apps/api/src/core/TenantScopedRepository.js` — the *only* sanctioned way for business modules to touch tenant-scoped tables. Every base query is auto-filtered by `tenant_id`; every insert injects `tenant_id` from the context (the client can never choose it). `super_admin` (tenantId `null`) deliberately bypasses the filter — any cross-tenant action it takes must be written to `audit_log` by the calling code.
+- `apps/api/src/core/StockLedger.js` — the one other place allowed to touch tables directly (`products`, `stock_movements`, `stock_balance`), because it needs `SELECT ... FOR UPDATE` and multi-table transactional writes that the generic repository doesn't abstract.
+
+**Enforced by lint, not just convention:** `eslint.config.js` has a `no-restricted-syntax` rule that fails the build if `knex(...)`/`trx(...)` is called directly on `products`, `stock_movements`, or `stock_balance` outside `apps/api/src/core/**` (migrations, seeds, tests, and `plan-guard.js` are explicitly exempted). If you add a new tenant-scoped table that needs this protection, add it to `TENANT_TABLES` in `eslint.config.js`.
+
+When adding a new module that touches tenant data: instantiate `TenantScopedRepository` for that table inside the service, never call `knex('<table>')` from `modules/**`.
+
+### Stock ledger semantics (`core/StockLedger.js`)
+Stock movements are append-only (`stock_movements`); the app never UPDATEs/DELETEs rows there — corrections are new `adjustment` movements. `stock_balance` is a materialized balance kept in sync in the *same transaction* as the movement insert, using `SELECT ... FOR UPDATE` on the balance row to serialize concurrent writes per product. `quantity` semantics differ by type: `entry`/`exit` quantity is always positive (sign applied by type, exit blocks negative resulting balance), `adjustment` quantity is the absolute target balance and requires a `reason`.
+
+### Auth & tenant resolution
+- JWT (HS256, 8h expiry) payload: `{ sub: userId, tid: tenantId|null, role, jti }`. No server-side session store.
+- `tenant-resolver` middleware determines the tenant *before* login (for themed login screens) via custom domain -> subdomain -> `:slug` path -> `GET /public/tenant-theme?slug=` (public, unauthenticated).
+- RBAC roles: `super_admin` (tenantId null), `admin`, `operator` — see `packages/shared` for the `ROLES` enum.
+- `plan-guard` middleware enforces plan limits (`max_users`, `max_products`, feature flags like `csv`/`customDomain`/`terminology`) and is one of the lint-exempted files since it legitimately counts rows by tenant.
+
+### White-labeling
+Tenant branding (`tenant_branding` table: colors, logo, display name, report footer) and per-tenant terminology overrides (`tenant_terminology`) are injected into the frontend as CSS custom properties at runtime (`apps/web/src/theme/ThemeProvider.tsx`) — no per-tenant rebuild. Color changes are validated server-side for WCAG AA contrast (`apps/api/src/utils/contrast.js` / `apps/web/src/theme/contrast.ts`) before being persisted.
+
+### Frontend/backend served together in production
+In production the API serves the built SPA directly: `apps/api/src/app.js` registers `apps/web/dist` as static root and falls back unmatched non-`/api`/`/uploads` GET routes to `index.html` (client-side routing). In dev, Vite (`:5173`) and the API (`:3000`) run separately via `npm run dev`.
+
+### Error handling
+`apps/api/src/core/errors.js` defines the `Errors` factory used by services to throw typed errors (validation, not found, insufficient stock, etc.); `middlewares/error-handler.js` maps them to the standardized API error shape `{ error: { code, message, details } }` and ensures internals/stack traces never leak to the client.
+
+### Database
+- IDs are `CHAR(36)` UUIDv4 generated in application code (no autoincrement, to avoid leaking per-tenant volume).
+- Every business table has `tenant_id`; full DDL lives in `docs/schema.sql` and is mirrored in `docs/architecture.md` §3.
+- Migrations: `apps/api/src/db/migrations/`, seeds: `apps/api/src/db/seeds/`, Knex config: `apps/api/src/db/knexfile.js`.
+
+### Testing focus
+Tests live under `apps/api/tests/<domain>/`. The highest-value suite is `tests/isolation/tenant-isolation.test.js`, which proves tenant A cannot read/write tenant B's data. When changing anything in `core/` or adding a new tenant-scoped module, run/extend this suite plus the relevant domain test (`stock`, `products`, `branding`, `tenants`, `reports`).

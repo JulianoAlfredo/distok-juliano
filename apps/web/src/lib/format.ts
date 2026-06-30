@@ -48,3 +48,16 @@ export const slugify = (v: string): string =>
 
 /** Validação simples de CNPJ (14 dígitos) — só estrutura, não dígito verificador. */
 export const isCnpjLike = (v: string) => onlyDigits(v).length === 14;
+
+/** Máscara de telefone: (00) 0000-0000 ou (00) 00000-0000. */
+export const maskPhone = (v: string): string => {
+  const d = onlyDigits(v).slice(0, 11);
+  if (d.length <= 10) {
+    return d
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return d
+    .replace(/^(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+};

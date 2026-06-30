@@ -68,3 +68,18 @@ export const IconMenu = (p: P) => (
 export const IconClose = (p: P) => (
   <svg {...base(p)}><path d="M18 6 6 18M6 6l12 12" /></svg>
 );
+export const IconTruck = (p: P) => (
+  <svg {...base(p)}><rect x="1" y="3" width="15" height="13" rx="1.5" /><path d="M16 8h4l3 5v4h-7V8Z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
+);
+export const IconPerson = (p: P) => (
+  <svg {...base(p)}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+);
+export const IconHistory = (p: P) => (
+  <svg {...base(p)}><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l3 3" /></svg>
+);
+export const IconWallet = (p: P) => (
+  <svg {...base(p)}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /><circle cx="16" cy="15" r="1" /></svg>
+);
+export const IconTrendUp = (p: P) => (
+  <svg {...base(p)}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+);

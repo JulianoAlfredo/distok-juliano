@@ -273,6 +273,21 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .confirm-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: grid; place-items: center; padding: var(--sp-4); z-index: 300; animation: toast-in var(--t); }
 .confirm { width: 420px; max-width: 95vw; box-shadow: var(--shadow-lg); }
 
+/* ---------- Segmented control ---------- */
+.seg { display: inline-flex; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 3px; gap: 3px; }
+.seg-btn { font: inherit; font-size: var(--fs-sm); font-weight: 600; border: none; background: transparent; color: var(--color-text-mut); padding: 7px var(--sp-4); border-radius: 9px; cursor: pointer; transition: all var(--t-fast); }
+.seg-btn:hover { color: var(--color-text); }
+.seg-btn.active { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow-xs); }
+
+/* ---------- Picker de item (busca autocomplete) ---------- */
+.pick-row { padding: 10px var(--sp-3); cursor: pointer; border-bottom: 1px solid var(--color-border); transition: background var(--t-fast); font-size: var(--fs-sm); }
+.pick-row:last-child { border-bottom: none; }
+.pick-row:hover { background: var(--primary-softer); }
+
+/* ---------- Paginação ---------- */
+.pagination { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-6); border-top: 1px solid var(--color-border); }
+.pagination-info { font-size: var(--fs-xs); color: var(--color-text-faint); flex: 1; }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 760px) {
   .grid-2 { grid-template-columns: 1fr; }

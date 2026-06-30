@@ -17,6 +17,13 @@ const usersRoutes = require('./modules/users/users.routes');
 const stockRoutes = require('./modules/stock/stock.routes');
 const reportsRoutes = require('./modules/reports/reports.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const customersRoutes  = require('./modules/customers/customers.routes');
+const suppliersRoutes  = require('./modules/suppliers/suppliers.routes');
+const catalogRoutes    = require('./modules/catalog/catalog.routes');
+const purchasesRoutes  = require('./modules/purchases/purchases.routes');
+const salesRoutes      = require('./modules/sales/sales.routes');
+const cashierRoutes    = require('./modules/cashier/cashier.routes');
+const financialRoutes  = require('./modules/financial/financial.routes');
 
 /** Monta a instância Fastify com plugins, middlewares e rotas. */
 async function buildApp() {
@@ -77,6 +84,13 @@ async function buildApp() {
   app.register(stockRoutes, { prefix: '/api/v1/stock' });
   app.register(reportsRoutes, { prefix: '/api/v1/reports' });
   app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
+  app.register(customersRoutes,  { prefix: '/api/v1/customers' });
+  app.register(suppliersRoutes,  { prefix: '/api/v1/suppliers' });
+  app.register(catalogRoutes,    { prefix: '/api/v1/catalog' });
+  app.register(purchasesRoutes,  { prefix: '/api/v1/purchases' });
+  app.register(salesRoutes,      { prefix: '/api/v1/sales' });
+  app.register(cashierRoutes,    { prefix: '/api/v1/cashier' });
+  app.register(financialRoutes,  { prefix: '/api/v1/financial' });
   app.register(tenantsRoutes, { prefix: '/api/v1/admin' });
   app.register(plansRoutes, { prefix: '/api/v1/admin' });
 

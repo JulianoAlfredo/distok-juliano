@@ -10,7 +10,7 @@
  * Exceção: arquivos em apps/api/src/core/** (onde o repositório é implementado).
  */
 
-const TENANT_TABLES = '^(products|stock_movements|stock_balance)$';
+const TENANT_TABLES = '^(products|stock_movements|stock_balance|customers|suppliers|product_categories|product_units|purchases|purchase_items|sales|sale_items|cashier_sessions|cashier_entries|financial_entries)$';
 
 const antiBypassRule = {
   'no-restricted-syntax': [

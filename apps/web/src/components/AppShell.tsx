@@ -4,7 +4,7 @@ import { useAuth } from '../auth/useAuth';
 import { useTheme } from '../theme/ThemeProvider';
 import {
   IconDashboard, IconBox, IconLayers, IconUsers, IconReport, IconBrand,
-  IconBuilding, IconTag, IconLogout, IconMenu,
+  IconBuilding, IconTag, IconLogout, IconMenu, IconPerson, IconTruck, IconArrowDown, IconArrowUp, IconWallet, IconTrendUp,
 } from './ui/icons';
 
 type NavItem = { to: string; label: string; roles: string[]; icon: ReactNode };
@@ -12,6 +12,13 @@ type NavItem = { to: string; label: string; roles: string[]; icon: ReactNode };
 const NAV: NavItem[] = [
   { to: '/', label: 'Dashboard', roles: ['admin', 'operator'], icon: <IconDashboard /> },
   { to: '/produtos', label: 'Produtos', roles: ['admin', 'operator'], icon: <IconBox /> },
+  { to: '/clientes',     label: 'Clientes',     roles: ['admin', 'operator'], icon: <IconPerson /> },
+  { to: '/fornecedores', label: 'Fornecedores', roles: ['admin', 'operator'], icon: <IconTruck /> },
+  { to: '/vendas',       label: 'Vendas',       roles: ['admin', 'operator'], icon: <IconArrowUp /> },
+  { to: '/compras',      label: 'Compras',      roles: ['admin', 'operator'], icon: <IconArrowDown /> },
+  { to: '/cadastros',    label: 'Cadastros',    roles: ['admin'],             icon: <IconTag /> },
+  { to: '/caixa',      label: 'Caixa',      roles: ['admin', 'operator'], icon: <IconWallet /> },
+  { to: '/financeiro', label: 'Financeiro', roles: ['admin'],             icon: <IconTrendUp /> },
   { to: '/estoque', label: 'Estoque', roles: ['admin', 'operator'], icon: <IconLayers /> },
   { to: '/funcionarios', label: 'Funcionários', roles: ['admin'], icon: <IconUsers /> },
   { to: '/relatorios', label: 'Relatórios', roles: ['admin'], icon: <IconReport /> },

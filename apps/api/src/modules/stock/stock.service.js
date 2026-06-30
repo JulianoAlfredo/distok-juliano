@@ -61,4 +61,41 @@ async function listMovements(ctx, productId, { page = 1, limit = 50 }) {
   return { product: { id: product.id, name: product.name, sku: product.sku }, movements: rows };
 }
 
-module.exports = { createMovement, listBalance, listMovements };
+/** Histórico geral de movimentações com filtros (expandido). */
+async function listAllMovements(ctx, { type, productId, dateFrom, dateTo, page = 1, limit = 50 }) {
+  const repo = new TenantScopedRepository(knex, 'stock_movements', ctx);
+  const q = repo.query()
+    .leftJoin('products', 'products.id', 'stock_movements.product_id')
+    .leftJoin('users', 'users.id', 'stock_movements.user_id')
+    .select(
+      'stock_movements.id',
+      'stock_movements.type',
+      'stock_movements.quantity',
+      'stock_movements.balance_after',
+      'stock_movements.reason',
+      'stock_movements.note',
+      'stock_movements.created_at',
+      'products.id as product_id',
+      'products.name as product_name',
+      'products.sku',
+      'users.name as user_name'
+    );
+  if (type)      q.where('stock_movements.type', type);
+  if (productId) q.where('stock_movements.product_id', productId);
+  if (dateFrom)  q.where('stock_movements.created_at', '>=', dateFrom);
+  if (dateTo)    q.where('stock_movements.created_at', '<=', dateTo + ' 23:59:59');
+
+  const countQ = repo.query()
+    .leftJoin('products', 'products.id', 'stock_movements.product_id');
+  if (type)      countQ.where('stock_movements.type', type);
+  if (productId) countQ.where('stock_movements.product_id', productId);
+  if (dateFrom)  countQ.where('stock_movements.created_at', '>=', dateFrom);
+  if (dateTo)    countQ.where('stock_movements.created_at', '<=', dateTo + ' 23:59:59');
+  const countRow = await countQ.count({ c: '*' }).first();
+  const total    = Number(countRow?.c ?? 0);
+
+  const rows = await q.orderBy('stock_movements.created_at', 'desc').limit(limit).offset((page - 1) * limit);
+  return { items: rows, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
+}
+
+module.exports = { createMovement, listBalance, listMovements, listAllMovements };
