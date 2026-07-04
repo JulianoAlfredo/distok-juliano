@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, CSSProperties } from 'react';
 
 /** Ajuda contextual: um "?" discreto que mostra uma explicação simples ao passar o mouse
  *  ou focar (acessível por teclado). Pensado para quem não conhece termos técnicos. */
@@ -7,6 +7,16 @@ export function Hint({ children }: { children: ReactNode }) {
     <span className="hint" tabIndex={0} role="note" aria-label={typeof children === 'string' ? children : 'ajuda'}>
       ?
       <span className="hint-pop">{children}</span>
+    </span>
+  );
+}
+
+/** Mensagem de erro inline de campo de formulário. */
+export function FieldError({ children, style }: { children?: ReactNode; style?: CSSProperties }) {
+  if (!children) return null;
+  return (
+    <span role="alert" style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-danger)', display: 'block', marginTop: 4, ...style }}>
+      {children}
     </span>
   );
 }

@@ -1,46 +1,56 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAuth } from '../../auth/useAuth';
 import { PageHeader, StatusBadge, EmptyState } from '../../components/ui';
+import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
-import { IconLayers, IconSearch, IconClose } from '../../components/ui/icons';
+import { IconLayers, IconSearch, IconPlus } from '../../components/ui/icons';
 
-type Balance = {
-  product_id: string; name: string; sku: string | null;
-  current_stock: number; min_stock: number; below_min: boolean;
-};
-type Product = { id: string; name: string; sku: string | null };
+type Balance = { product_id: string; name: string; sku: string | null; current_stock: number; min_stock: number; below_min: boolean };
+type Product  = { id: string; name: string; sku: string | null };
 
 export function StockPage() {
-  const [tab, setTab] = useState<'lancar' | 'saldo' | 'historico'>('lancar');
   const { t } = useTheme();
+  const location = useLocation();
+  const [tab, setTab]         = useState<'saldo' | 'historico'>('saldo');
+  const [launchOpen, setLaunchOpen] = useState(false);
+  useEffect(() => { if ((location.state as any)?.autoOpen === 'new') setLaunchOpen(true); }, []); // eslint-disable-line
+
   return (
     <div>
-      <PageHeader title={t('stock')} subtitle="Entradas, saídas, ajustes e saldo atual" />
+      <PageHeader title={t('stock')} subtitle="Saldo atual e histórico de movimentações"
+        actions={<button className="btn btn-primary" onClick={() => setLaunchOpen(true)}><IconPlus width={16} height={16} /> Lançar movimentação</button>}
+      />
       <div className="seg" style={{ marginBottom: 'var(--sp-5)' }}>
-        <style>{segCss}</style>
-        <button className={`seg-btn${tab === 'lancar'   ? ' active' : ''}`} onClick={() => setTab('lancar')}>Lançar</button>
-        <button className={`seg-btn${tab === 'saldo'    ? ' active' : ''}`} onClick={() => setTab('saldo')}>Saldo</button>
-        <button className={`seg-btn${tab === 'historico'? ' active' : ''}`} onClick={() => setTab('historico')}>Histórico</button>
+        <button className={`seg-btn${tab === 'saldo'     ? ' active' : ''}`} onClick={() => setTab('saldo')}>Saldo atual</button>
+        <button className={`seg-btn${tab === 'historico' ? ' active' : ''}`} onClick={() => setTab('historico')}>Histórico</button>
       </div>
-      {tab === 'lancar' ? <LaunchForm /> : tab === 'saldo' ? <BalanceList /> : <MovementHistory />}
+      {tab === 'saldo' ? <BalanceList onLaunch={() => setLaunchOpen(true)} /> : <MovementHistory />}
+      <LaunchModal open={launchOpen} onClose={() => setLaunchOpen(false)} />
     </div>
   );
 }
 
-function LaunchForm() {
+// ─── Modal de lançamento ──────────────────────────────────────────────────────
+
+function LaunchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
-  const toast = useToast();
-  const isAdmin = user?.role === 'admin';
-  const [type, setType] = useState<'entry' | 'exit' | 'adjustment'>('entry');
-  const [query, setQuery] = useState('');
+  const toast    = useToast();
+  const isAdmin  = user?.role === 'admin';
+  const [type, setType]       = useState<'entry' | 'exit' | 'adjustment'>('entry');
+  const [query, setQuery]     = useState('');
   const [results, setResults] = useState<Product[]>([]);
-  const [picked, setPicked] = useState<Product | null>(null);
-  const [qty, setQty] = useState(1);
-  const [reason, setReason] = useState('venda');
-  const [note, setNote] = useState('');
+  const [picked, setPicked]   = useState<Product | null>(null);
+  const [qty, setQty]         = useState(1);
+  const [reason, setReason]   = useState('venda');
+  const [note, setNote]       = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) { setType('entry'); setQuery(''); setResults([]); setPicked(null); setQty(1); setReason('venda'); setNote(''); }
+  }, [open]);
 
   useEffect(() => {
     if (query.length < 1) { setResults([]); return; }
@@ -55,26 +65,33 @@ function LaunchForm() {
     setSubmitting(true);
     try {
       const body: any = { productId: picked.id, type, quantity: Number(qty) };
-      if (type === 'exit') body.reason = reason;
+      if (type === 'exit')       body.reason = reason;
       if (type === 'adjustment') body.reason = reason || 'ajuste manual';
       if (note) body.note = note;
       const { data } = await api.post('/stock/movements', body);
-      toast.push(`Registrado! Saldo atual: ${data.balanceAfter}${data.belowMin ? ' (abaixo do mínimo)' : ''}`, data.belowMin ? 'error' : 'success');
-      setQty(1); setNote('');
+      toast.push(`Registrado! Saldo: ${data.balanceAfter}${data.belowMin ? ' (abaixo do mínimo)' : ''}`, data.belowMin ? 'error' : 'success');
+      onClose();
     } catch (e: any) {
       toast.push(e.response?.data?.error?.message || 'Erro ao registrar.', 'error');
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   }
 
   const typeLabel = type === 'entry' ? 'entrada' : type === 'exit' ? 'saída' : 'ajuste';
 
   return (
-    <div className="card" style={{ maxWidth: 480 }}>
+    <Modal open={open} onClose={onClose} title="Lançar movimentação" size="md"
+      footer={
+        <>
+          <button className="btn btn-primary" onClick={submit} disabled={submitting}>
+            {submitting ? 'Registrando…' : `Confirmar ${typeLabel}`}
+          </button>
+          <button className="btn" onClick={onClose}>Cancelar</button>
+        </>
+      }
+    >
       <div className="seg" style={{ marginBottom: 'var(--sp-5)' }}>
-        <button className={`seg-btn${type === 'entry' ? ' active' : ''}`} onClick={() => setType('entry')}>Entrada</button>
-        <button className={`seg-btn${type === 'exit' ? ' active' : ''}`} onClick={() => setType('exit')}>Saída</button>
+        <button className={`seg-btn${type === 'entry'      ? ' active' : ''}`} onClick={() => setType('entry')}>Entrada</button>
+        <button className={`seg-btn${type === 'exit'       ? ' active' : ''}`} onClick={() => setType('exit')}>Saída</button>
         {isAdmin && <button className={`seg-btn${type === 'adjustment' ? ' active' : ''}`} onClick={() => setType('adjustment')}>Ajuste</button>}
       </div>
 
@@ -82,18 +99,18 @@ function LaunchForm() {
         <label>Produto</label>
         {picked ? (
           <div className="row-between" style={{ border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-md)', padding: '10px var(--sp-3)' }}>
-            <span style={{ fontWeight: 500 }}>{picked.name} {picked.sku ? <span className="faint">· {picked.sku}</span> : ''}</span>
+            <span style={{ fontWeight: 500 }}>{picked.name}{picked.sku ? <span className="faint"> · {picked.sku}</span> : ''}</span>
             <button className="btn btn-sm btn-ghost" onClick={() => setPicked(null)}>trocar</button>
           </div>
         ) : (
           <div style={{ position: 'relative' }}>
             <span style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-faint)' }}><IconSearch width={18} height={18} /></span>
-            <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar por nome ou código" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
+            <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar por nome ou código" value={query} autoFocus onChange={(e) => setQuery(e.target.value)} />
             {results.length > 0 && (
               <div style={{ border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-md)', marginTop: 4, overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
                 {results.map((p) => (
                   <div key={p.id} className="pick-row" onClick={() => { setPicked(p); setQuery(''); setResults([]); }}>
-                    {p.name} {p.sku ? <span className="faint">· {p.sku}</span> : ''}
+                    {p.name}{p.sku ? <span className="faint"> · {p.sku}</span> : ''}
                   </div>
                 ))}
               </div>
@@ -128,23 +145,20 @@ function LaunchForm() {
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: correção de contagem" />
         </div>
       )}
-
-      <div className="field">
+      <div className="field" style={{ marginBottom: 0 }}>
         <label>Observação (opcional)</label>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
-
-      <button className="btn btn-primary btn-block mt-2" onClick={submit} disabled={submitting}>
-        {submitting ? 'Registrando…' : `Confirmar ${typeLabel}`}
-      </button>
-    </div>
+    </Modal>
   );
 }
 
-function BalanceList() {
-  const [items, setItems] = useState<Balance[]>([]);
+// ─── Saldo atual ──────────────────────────────────────────────────────────────
+
+function BalanceList({ onLaunch }: { onLaunch: () => void }) {
+  const [items, setItems]     = useState<Balance[]>([]);
   const [belowMin, setBelowMin] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch]   = useState('');
   const [extract, setExtract] = useState<any | null>(null);
 
   async function load() {
@@ -160,7 +174,7 @@ function BalanceList() {
 
   return (
     <div>
-      <div className="row" style={{ marginBottom: 'var(--sp-4)' }}>
+      <div className="row" style={{ marginBottom: 'var(--sp-4)', flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
         <div style={{ position: 'relative', maxWidth: 300, flex: 1 }}>
           <span style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-faint)' }}><IconSearch width={18} height={18} /></span>
           <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar produto" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} />
@@ -171,7 +185,11 @@ function BalanceList() {
       </div>
 
       {items.length === 0 ? (
-        <div className="card"><EmptyState icon={<IconLayers />} title="Nenhum item" hint="Ajuste os filtros ou cadastre produtos." /></div>
+        <div className="card">
+          <EmptyState icon={<IconLayers />} title="Nenhum item" hint="Ajuste os filtros ou cadastre produtos."
+            action={<button className="btn btn-primary" onClick={onLaunch}><IconPlus width={16} height={16} /> Lançar movimentação</button>}
+          />
+        </div>
       ) : (
         <div className="table-wrap">
           <table className="table">
@@ -191,36 +209,32 @@ function BalanceList() {
         </div>
       )}
 
-      {extract && (
-        <div onClick={() => setExtract(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', display: 'grid', placeItems: 'center', padding: 'var(--sp-4)', zIndex: 100 }}>
-          <div className="card" style={{ width: 680, maxWidth: '95vw', maxHeight: '82vh', overflow: 'auto', padding: 0 }} onClick={(e) => e.stopPropagation()}>
-            <div className="row-between" style={{ padding: 'var(--sp-5) var(--sp-6)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, background: 'var(--color-surface)' }}>
-              <h3>{extract.product.name} — Extrato</h3>
-              <button className="btn btn-sm btn-ghost" onClick={() => setExtract(null)}><IconClose width={18} height={18} /></button>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table">
-                <thead><tr><th>Data</th><th>Tipo</th><th>Qtd</th><th>Saldo</th><th>Responsável</th><th>Motivo</th></tr></thead>
-                <tbody>
-                  {extract.movements.map((m: any) => (
-                    <tr key={m.id}>
-                      <td className="muted">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
-                      <td>{m.type === 'entry' ? 'entrada' : m.type === 'exit' ? 'saída' : 'ajuste'}</td>
-                      <td>{m.quantity}</td>
-                      <td style={{ fontWeight: 600 }}>{m.balance_after}</td>
-                      <td className="muted">{m.user_name || '—'}</td>
-                      <td className="muted">{m.reason || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      <Modal open={!!extract} onClose={() => setExtract(null)} title={extract ? `${extract.product.name} — Extrato` : ''} size="lg">
+        {extract && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Data</th><th>Tipo</th><th>Qtd</th><th>Saldo</th><th>Responsável</th><th>Motivo</th></tr></thead>
+              <tbody>
+                {extract.movements.map((m: any) => (
+                  <tr key={m.id}>
+                    <td className="muted">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                    <td>{m.type === 'entry' ? <span className="badge badge-success">Entrada</span> : m.type === 'exit' ? <span className="badge badge-danger">Saída</span> : <span className="badge badge-info">Ajuste</span>}</td>
+                    <td>{m.quantity}</td>
+                    <td style={{ fontWeight: 600 }}>{m.balance_after}</td>
+                    <td className="muted">{m.user_name || '—'}</td>
+                    <td className="muted">{m.reason || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
+
+// ─── Histórico geral ──────────────────────────────────────────────────────────
 
 function MovementHistory() {
   const [items, setItems]       = useState<any[]>([]);
@@ -235,14 +249,7 @@ function MovementHistory() {
   async function load(p = currentPage) {
     setLoading(true);
     try {
-      const { data } = await api.get('/stock/movements', {
-        params: {
-          type: typeFilter || undefined,
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
-          page: p,
-        },
-      });
+      const { data } = await api.get('/stock/movements', { params: { type: typeFilter || undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: p } });
       setItems(data.items); setTotal(data.total); setPages(data.pages);
     } finally { setLoading(false); }
   }
@@ -267,7 +274,7 @@ function MovementHistory() {
       </div>
 
       {loading ? <div style={{ padding: 'var(--sp-8)', textAlign: 'center' }}><span className="spin" /></div> : items.length === 0 ? (
-        <div className="card"><EmptyState icon={<IconLayers />} title="Nenhuma movimentação encontrada" hint="Ajuste os filtros para ver resultados." /></div>
+        <div className="card"><EmptyState icon={<IconLayers />} title="Nenhuma movimentação" hint="Ajuste os filtros para ver resultados." /></div>
       ) : (
         <div className="table-wrap">
           <table className="table">
@@ -300,13 +307,3 @@ function MovementHistory() {
     </div>
   );
 }
-
-const segCss = `
-.seg { display: inline-flex; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 3px; gap: 3px; }
-.seg-btn { font: inherit; font-size: var(--fs-sm); font-weight: 600; border: none; background: transparent; color: var(--color-text-mut); padding: 7px var(--sp-4); border-radius: 9px; cursor: pointer; transition: all var(--t-fast); }
-.seg-btn:hover { color: var(--color-text); }
-.seg-btn.active { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow-xs); }
-.pick-row { padding: 10px var(--sp-3); cursor: pointer; border-bottom: 1px solid var(--color-border); transition: background var(--t-fast); }
-.pick-row:last-child { border-bottom: none; }
-.pick-row:hover { background: var(--primary-softer); }
-`;

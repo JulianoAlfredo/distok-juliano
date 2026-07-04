@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { PageHeader, Loading, EmptyState } from '../../components/ui';
-import { IconBox, IconAlert, IconLayers, IconArrowUp, IconArrowDown, IconWallet, IconTrendUp } from '../../components/ui/icons';
+import { IconBox, IconAlert, IconAlertTriangle, IconLayers, IconArrowUp, IconArrowDown, IconWallet, IconTrendUp } from '../../components/ui/icons';
 import { formatBRL } from '../../lib/format';
 
 type Summary = {
@@ -34,6 +35,8 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader title="Dashboard" subtitle="Visão geral em tempo real" />
+
+      <AlertBanner zeroStock={s.zeroStock} belowMin={s.belowMin} />
 
       {/* Vendas */}
       <h4 className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 'var(--sp-3)', letterSpacing: '.06em' }}>Vendas</h4>
@@ -131,6 +134,29 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AlertBanner({ zeroStock, belowMin }: { zeroStock: number; belowMin: number }) {
+  const navigate = useNavigate();
+  if (zeroStock === 0 && belowMin === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
+      {zeroStock > 0 && (
+        <div className="alert-banner alert-banner-error">
+          <IconAlert width={16} height={16} style={{ flex: 'none' }} />
+          <span><strong>{zeroStock} produto{zeroStock > 1 ? 's' : ''} sem estoque.</strong> Reposição necessária.</span>
+          <button className="btn btn-xs btn-ghost alert-banner-action" onClick={() => navigate('/estoque')}>Ver estoque</button>
+        </div>
+      )}
+      {belowMin > 0 && (
+        <div className="alert-banner alert-banner-warning">
+          <IconAlertTriangle width={16} height={16} style={{ flex: 'none' }} />
+          <span><strong>{belowMin} produto{belowMin > 1 ? 's' : ''} abaixo do estoque mínimo.</strong> Considere repor.</span>
+          <button className="btn btn-xs btn-ghost alert-banner-action" onClick={() => navigate('/estoque')}>Ver estoque</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ const knex = require('../../db/knex');
 const TenantScopedRepository = require('../../core/TenantScopedRepository');
 const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
+const { applySearch } = require('../../utils/search');
 const { assertCanAddProduct } = require('../../middlewares/plan-guard');
 const { PRODUCT_STATUS } = require('@distok/shared');
 
@@ -29,11 +30,7 @@ async function list(ctx, { search, category, status, page = 1, limit = 25 }) {
   const q = repo(ctx).query();
   if (status) q.where('products.status', status);
   if (category) q.where('products.category', category);
-  if (search) {
-    q.where((b) => {
-      b.where('products.name', 'like', `%${search}%`).orWhere('products.sku', 'like', `%${search}%`);
-    });
-  }
+  if (search) applySearch(q, search, ['products.name', 'products.sku']);
   const offset = (page - 1) * limit;
   const rows = await q.orderBy('products.name', 'asc').limit(limit).offset(offset);
   return rows.map(decorate);

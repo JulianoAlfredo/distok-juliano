@@ -2,27 +2,25 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { PageHeader, StatusBadge, EmptyState, Loading } from '../../components/ui';
+import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { FieldLabel } from '../../components/ui/Hint';
 import { maskCPF } from '../../lib/format';
 import { IconUsers, IconPlus } from '../../components/ui/icons';
 
-type Emp = {
-  id: string; name: string; email: string;
-  role_title: string | null; role: 'admin' | 'operator'; status: string;
-};
-
+type Emp = { id: string; name: string; email: string; role_title: string | null; role: 'admin' | 'operator'; status: string };
 const EMPTY = { name: '', email: '', cpf: '', role_title: '', role: 'operator' };
 
 export function UsersPage() {
   const { t } = useTheme();
   const toast = useToast();
   const confirm = useConfirm();
-  const [items, setItems] = useState<Emp[]>([]);
-  const [form, setForm] = useState<any>(null);
+  const [items, setItems]     = useState<Emp[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [open, setOpen]       = useState(false);
+  const [form, setForm]       = useState<any>({ ...EMPTY });
   const term = t('employee').toLowerCase();
 
   async function load() {
@@ -33,19 +31,19 @@ export function UsersPage() {
   }
   useEffect(() => { load(); }, []);
 
+  function openModal() { setForm({ ...EMPTY }); setOpen(true); }
+
   async function save() {
     if (!form.name.trim() || !form.email.trim()) return toast.push('Preencha o nome e o e-mail.', 'error');
     setSaving(true);
     try {
       await api.post('/users', form);
-      setForm(null);
+      setOpen(false);
       toast.push('Acesso criado! A senha temporária foi enviada por e-mail.', 'success');
       await load();
     } catch (e: any) {
       toast.push(e.response?.data?.error?.message || 'Não foi possível criar o acesso.', 'error');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function toggleStatus(emp: Emp) {
@@ -64,54 +62,15 @@ export function UsersPage() {
       <PageHeader
         title={`${t('employee')}s`}
         subtitle="Quem pode usar o sistema e o que cada um pode fazer"
-        actions={!form && <button className="btn btn-primary" onClick={() => setForm({ ...EMPTY })}><IconPlus width={16} height={16} /> Novo {term}</button>}
+        actions={<button className="btn btn-primary" onClick={openModal}><IconPlus width={16} height={16} /> Novo {term}</button>}
       />
 
-      {form && (
-        <div className="card" style={{ marginBottom: 'var(--sp-6)' }}>
-          <h3 style={{ marginBottom: 'var(--sp-4)' }}>Novo {term}</h3>
-          <div className="grid-2">
-            <div className="field" style={{ margin: 0 }}>
-              <FieldLabel required>Nome completo</FieldLabel>
-              <input className="input" placeholder="Ex.: João da Silva" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
-            </div>
-            <div className="field" style={{ margin: 0 }}>
-              <FieldLabel required hint="É para este e-mail que enviamos a senha de acesso.">E-mail</FieldLabel>
-              <input className="input" type="email" placeholder="joao@empresa.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div className="field" style={{ margin: 0 }}>
-              <FieldLabel hint="Opcional. Só números — a máscara é aplicada sozinha.">CPF</FieldLabel>
-              <input className="input" placeholder="000.000.000-00" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: maskCPF(e.target.value) })} inputMode="numeric" />
-            </div>
-            <div className="field" style={{ margin: 0 }}>
-              <FieldLabel hint="Como a pessoa é chamada na empresa. Opcional.">Cargo</FieldLabel>
-              <input className="input" placeholder="Ex.: Estoquista" value={form.role_title} onChange={(e) => setForm({ ...form, role_title: e.target.value })} />
-            </div>
-            <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
-              <FieldLabel required>Nível de acesso</FieldLabel>
-              <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <option value="operator">Operador — registra entradas e saídas de estoque</option>
-                <option value="admin">Administrador — acesso total (produtos, equipe, relatórios)</option>
-              </select>
-              <div className="field-hint">
-                {form.role === 'admin'
-                  ? 'O administrador pode fazer tudo na empresa, inclusive cadastrar pessoas e ver relatórios.'
-                  : 'O operador foca no dia a dia do estoque, sem acesso a configurações e relatórios.'}
-              </div>
-            </div>
-          </div>
-          <p className="muted mt-4" style={{ fontSize: 'var(--fs-sm)' }}>
-            A pessoa recebe uma senha temporária por e-mail e cria a própria senha no primeiro acesso.
-          </p>
-          <div className="row mt-2">
-            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Criando…' : 'Criar acesso'}</button>
-            <button className="btn" onClick={() => setForm(null)}>Cancelar</button>
-          </div>
-        </div>
-      )}
-
       {loading ? <Loading /> : items.length === 0 ? (
-        <div className="card"><EmptyState icon={<IconUsers />} title={`Nenhum ${term} cadastrado`} hint="Adicione as pessoas da equipe e escolha o que cada uma pode fazer." /></div>
+        <div className="card">
+          <EmptyState icon={<IconUsers />} title={`Nenhum ${term} cadastrado`} hint="Adicione as pessoas da equipe e escolha o que cada uma pode fazer."
+            action={<button className="btn btn-primary" onClick={openModal}><IconPlus width={16} height={16} /> Novo {term}</button>}
+          />
+        </div>
       ) : (
         <div className="table-wrap">
           <table className="table">
@@ -131,6 +90,44 @@ export function UsersPage() {
           </table>
         </div>
       )}
+
+      <Modal open={open} onClose={() => setOpen(false)} title={`Novo ${term}`}
+        subtitle="Um e-mail com senha temporária será enviado automaticamente."
+        size="md"
+        footer={
+          <>
+            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Criando…' : 'Criar acesso'}</button>
+            <button className="btn" onClick={() => setOpen(false)}>Cancelar</button>
+          </>
+        }
+      >
+        <div className="grid-2">
+          <div className="field" style={{ margin: 0 }}>
+            <FieldLabel required>Nome completo</FieldLabel>
+            <input className="input" placeholder="Ex.: João da Silva" value={form.name} autoFocus onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <FieldLabel required hint="É para este e-mail que enviamos a senha de acesso.">E-mail</FieldLabel>
+            <input className="input" type="email" placeholder="joao@empresa.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <FieldLabel hint="Opcional.">CPF</FieldLabel>
+            <input className="input" placeholder="000.000.000-00" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: maskCPF(e.target.value) })} inputMode="numeric" />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <FieldLabel hint="Como a pessoa é chamada na empresa. Opcional.">Cargo</FieldLabel>
+            <input className="input" placeholder="Ex.: Estoquista" value={form.role_title} onChange={(e) => setForm({ ...form, role_title: e.target.value })} />
+          </div>
+          <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
+            <FieldLabel required>Nível de acesso</FieldLabel>
+            <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+              <option value="operator">Operador — registra entradas e saídas de estoque</option>
+              <option value="admin">Administrador — acesso total (produtos, equipe, relatórios)</option>
+            </select>
+            <div className="field-hint">{form.role === 'admin' ? 'Acesso total inclusive a relatórios e configurações.' : 'Foco no dia a dia do estoque, sem relatórios ou configurações.'}</div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

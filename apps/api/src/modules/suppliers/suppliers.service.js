@@ -5,6 +5,7 @@ const knex = require('../../db/knex');
 const TenantScopedRepository = require('../../core/TenantScopedRepository');
 const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
+const { applySearch } = require('../../utils/search');
 
 function repo(ctx) {
   return new TenantScopedRepository(knex, 'suppliers', ctx);
@@ -14,14 +15,7 @@ async function list(ctx, { search, status, page = 1, limit = 25 }) {
   const base = () => {
     const q = repo(ctx).query();
     if (status) q.where('suppliers.status', status);
-    if (search) {
-      q.where((b) => {
-        b.where('suppliers.name', 'like', `%${search}%`)
-          .orWhere('suppliers.trade_name', 'like', `%${search}%`)
-          .orWhere('suppliers.cnpj', 'like', `%${search}%`)
-          .orWhere('suppliers.email', 'like', `%${search}%`);
-      });
-    }
+    if (search) applySearch(q, search, ['suppliers.name', 'suppliers.trade_name', 'suppliers.cnpj', 'suppliers.email']);
     return q;
   };
 

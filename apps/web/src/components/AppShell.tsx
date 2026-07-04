@@ -2,9 +2,12 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { useTheme } from '../theme/ThemeProvider';
+import { useCommandPalette } from './ui/CommandPalette';
+import { AlertsDropdown } from './ui/AlertsDropdown';
+import { usePreferences } from '../hooks/usePreferences';
 import {
   IconDashboard, IconBox, IconLayers, IconUsers, IconReport, IconBrand,
-  IconBuilding, IconTag, IconLogout, IconMenu, IconPerson, IconTruck, IconArrowDown, IconArrowUp, IconWallet, IconTrendUp,
+  IconBuilding, IconTag, IconLogout, IconMenu, IconSearch, IconPerson, IconTruck, IconArrowDown, IconArrowUp, IconWallet, IconTrendUp,
 } from './ui/icons';
 
 type NavItem = { to: string; label: string; roles: string[]; icon: ReactNode };
@@ -36,9 +39,12 @@ const roleLabel: Record<string, string> = {
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { branding, t } = useTheme();
+  const { open: openPalette } = useCommandPalette();
+  const { prefs, update: updatePrefs } = usePreferences();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
   const role = user?.role ?? 'operator';
+  const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
   const items = NAV.filter((n) => n.roles.includes(role)).map((n) => ({
     ...n,
@@ -84,6 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="shell">
+      <a href="#main-content" className="skip-nav">Pular para o conteúdo</a>
       <style>{shellCss}</style>
       {sidebar}
       {open && <div className="shell-backdrop" onClick={() => setOpen(false)} />}
@@ -94,16 +101,26 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button className="btn btn-ghost btn-sm shell-burger" onClick={() => setOpen(true)} aria-label="Menu">
             <IconMenu />
           </button>
-          <div className="row" style={{ gap: 'var(--sp-2)', minWidth: 0 }}>
-            <span className="muted" style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.tenant?.name || branding.display_name || 'DISTOK'}
-            </span>
-          </div>
+          <button className="cmd-trigger" onClick={openPalette} title="Abrir paleta de comandos">
+            <IconSearch width={15} height={15} />
+            <span style={{ flex: 1 }}>Buscar ou ir para…</span>
+            <kbd className="cmd-kbd">{isMac ? '⌘' : 'Ctrl'}K</kbd>
+          </button>
+          <AlertsDropdown />
+          <button
+            className="btn btn-sm btn-ghost"
+            title={prefs.density === 'comfortable' ? 'Modo compacto' : 'Modo confortável'}
+            onClick={() => updatePrefs({ density: prefs.density === 'comfortable' ? 'compact' : 'comfortable' })}
+            aria-label="Alternar densidade da tabela"
+            style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '.02em' }}
+          >
+            {prefs.density === 'comfortable' ? '≡' : '☰'}
+          </button>
           <button className="btn btn-sm" onClick={logout}>
             <IconLogout width={16} height={16} /> Sair
           </button>
         </header>
-        <main className="shell-main">{children}</main>
+        <main id="main-content" className="shell-main">{children}</main>
       </div>
     </div>
   );

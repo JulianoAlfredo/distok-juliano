@@ -5,6 +5,7 @@ const knex = require('../../db/knex');
 const TenantScopedRepository = require('../../core/TenantScopedRepository');
 const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
+const { applySearch } = require('../../utils/search');
 
 function repo(ctx) {
   return new TenantScopedRepository(knex, 'customers', ctx);
@@ -13,27 +14,12 @@ function repo(ctx) {
 async function list(ctx, { search, status, page = 1, limit = 25 }) {
   const q = repo(ctx).query();
   if (status) q.where('customers.status', status);
-  if (search) {
-    q.where((b) => {
-      b.where('customers.name', 'like', `%${search}%`)
-        .orWhere('customers.email', 'like', `%${search}%`)
-        .orWhere('customers.phone', 'like', `%${search}%`)
-        .orWhere('customers.cpf', 'like', `%${search}%`)
-        .orWhere('customers.cnpj', 'like', `%${search}%`);
-    });
-  }
+  const CUSTOMER_COLS = ['customers.name', 'customers.email', 'customers.phone', 'customers.cpf', 'customers.cnpj'];
+  if (search) applySearch(q, search, CUSTOMER_COLS);
 
   const countQ = repo(ctx).query();
   if (status) countQ.where('customers.status', status);
-  if (search) {
-    countQ.where((b) => {
-      b.where('customers.name', 'like', `%${search}%`)
-        .orWhere('customers.email', 'like', `%${search}%`)
-        .orWhere('customers.phone', 'like', `%${search}%`)
-        .orWhere('customers.cpf', 'like', `%${search}%`)
-        .orWhere('customers.cnpj', 'like', `%${search}%`);
-    });
-  }
+  if (search) applySearch(countQ, search, CUSTOMER_COLS);
   const countRow = await countQ.count({ c: '*' }).first();
   const total = Number(countRow ? countRow.c : 0);
 

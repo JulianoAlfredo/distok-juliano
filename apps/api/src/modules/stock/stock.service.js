@@ -4,6 +4,7 @@ const knex = require('../../db/knex');
 const TenantScopedRepository = require('../../core/TenantScopedRepository');
 const StockLedger = require('../../core/StockLedger');
 const { Errors } = require('../../core/errors');
+const { applySearch } = require('../../utils/search');
 
 /** Cria movimentação (delega ao ledger transacional do core). */
 async function createMovement(ctx, input) {
@@ -29,7 +30,7 @@ async function listBalance(ctx, { belowMin, category, search, page = 1, limit = 
     .where('products.status', 'active');
   if (category) q.where('products.category', category);
   if (search) {
-    q.where((b) => b.where('products.name', 'like', `%${search}%`).orWhere('products.sku', 'like', `%${search}%`));
+    applySearch(q, search, ['products.name', 'products.sku']);
   }
   if (belowMin) q.whereRaw('stock_balance.current_stock < products.min_stock');
   const rows = await q.orderBy('products.name', 'asc').limit(limit).offset((page - 1) * limit);
