@@ -8,7 +8,9 @@ import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { FieldLabel, FieldError } from '../../components/ui/Hint';
+import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
+import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { formatBRL } from '../../lib/format';
 import { IconBox, IconPlus, IconSearch } from '../../components/ui/icons';
 
@@ -32,6 +34,7 @@ export function ProductsPage() {
   const [categories, setCategories] = useState<CatalogItem[]>([]);
   const [units, setUnits]           = useState<CatalogItem[]>([]);
   const term = t('product').toLowerCase();
+  const bulk = useBulkSelection(items);
 
   async function load() {
     setLoading(true);
@@ -85,6 +88,17 @@ export function ProductsPage() {
     await load();
   }
 
+  async function bulkInactivate() {
+    const targets = items.filter((p) => bulk.isSelected(p.id) && p.status === 'active');
+    if (targets.length === 0) { bulk.clear(); return; }
+    const ok = await confirm({ title: `Inativar ${targets.length} ${term}(s)?`, message: 'Os itens deixam de aparecer nas listas, mas todo o histórico é mantido.', confirmText: 'Sim, inativar', danger: true });
+    if (!ok) return;
+    await Promise.all(targets.map((p) => api.patch(`/products/${p.id}/inactivate`)));
+    toast.push(`${targets.length} ${term}(s) inativado(s).`, 'success');
+    bulk.clear();
+    await load();
+  }
+
   return (
     <div>
       <PageHeader
@@ -109,12 +123,19 @@ export function ProductsPage() {
           />
         </div>
       ) : (
-        <div className="table-wrap">
+        <>
+          <BulkActionsBar count={bulk.count} onClear={bulk.clear}>
+            <button className="btn btn-sm" onClick={bulkInactivate}>Inativar selecionados</button>
+          </BulkActionsBar>
+          <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Nome</th><th>Código</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Situação</th><th></th></tr></thead>
+            <thead><tr>
+              <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
+              <th>Nome</th><th>Código</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Situação</th><th></th></tr></thead>
             <tbody>
               {items.map((p) => (
                 <tr key={p.id}>
+                  <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${p.name}`} checked={bulk.isSelected(p.id)} onChange={() => bulk.toggle(p.id)} /></td>
                   <td style={{ fontWeight: 500 }}>{p.name}</td>
                   <td className="muted">{p.sku || '—'}</td>
                   <td className="muted">{p.category || '—'}</td>
@@ -132,7 +153,8 @@ export function ProductsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       <Modal

@@ -5,6 +5,8 @@ import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { FieldLabel } from '../../components/ui/Hint';
+import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
+import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { maskCPF, maskCNPJ, maskPhone } from '../../lib/format';
 import { IconTruck, IconPlus, IconSearch } from '../../components/ui/icons';
 
@@ -26,6 +28,7 @@ export function SuppliersPage() {
   const [open, setOpen]               = useState(false);
   const [form, setForm]               = useState<any>({ ...EMPTY });
   const [editingId, setEditingId]     = useState<string | null>(null);
+  const bulk = useBulkSelection(page.items);
 
   async function load(p = currentPage) {
     setLoading(true);
@@ -71,7 +74,29 @@ export function SuppliersPage() {
     await load();
   }
 
+  async function bulkInactivate() {
+    const targets = page.items.filter((s) => bulk.isSelected(s.id) && s.status === 'active');
+    if (targets.length === 0) return;
+    const ok = await confirm({ title: `Inativar ${targets.length} fornecedor(es)?`, message: 'Os fornecedores deixam de aparecer nas listas. Você pode reativar depois.', confirmText: 'Sim, inativar', danger: true });
+    if (!ok) return;
+    await Promise.all(targets.map((s) => api.patch(`/suppliers/${s.id}/inactivate`)));
+    toast.push(`${targets.length} fornecedor(es) inativado(s).`, 'success');
+    bulk.clear();
+    await load();
+  }
+
+  async function bulkActivate() {
+    const targets = page.items.filter((s) => bulk.isSelected(s.id) && s.status !== 'active');
+    if (targets.length === 0) return;
+    await Promise.all(targets.map((s) => api.patch(`/suppliers/${s.id}/activate`)));
+    toast.push(`${targets.length} fornecedor(es) reativado(s).`, 'success');
+    bulk.clear();
+    await load();
+  }
+
   const { items, total, pages } = page;
+  const activeSelectedCount = items.filter((s) => bulk.isSelected(s.id) && s.status === 'active').length;
+  const inactiveSelectedCount = items.filter((s) => bulk.isSelected(s.id) && s.status !== 'active').length;
 
   return (
     <div>
@@ -104,12 +129,20 @@ export function SuppliersPage() {
           />
         </div>
       ) : (
-        <div className="table-wrap">
+        <>
+          <BulkActionsBar count={bulk.count} onClear={bulk.clear}>
+            {activeSelectedCount > 0 && <button className="btn btn-sm" onClick={bulkInactivate}>Inativar selecionados</button>}
+            {inactiveSelectedCount > 0 && <button className="btn btn-sm" onClick={bulkActivate}>Reativar selecionados</button>}
+          </BulkActionsBar>
+          <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Nome / Fantasia</th><th>CNPJ / CPF</th><th>Contato</th><th>Cidade / UF</th><th>Situação</th><th></th></tr></thead>
+            <thead><tr>
+              <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
+              <th>Nome / Fantasia</th><th>CNPJ / CPF</th><th>Contato</th><th>Cidade / UF</th><th>Situação</th><th></th></tr></thead>
             <tbody>
               {items.map((s) => (
                 <tr key={s.id}>
+                  <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${s.name}`} checked={bulk.isSelected(s.id)} onChange={() => bulk.toggle(s.id)} /></td>
                   <td>
                     <div style={{ fontWeight: 500 }}>{s.name}</div>
                     {s.trade_name && <div className="muted" style={{ fontSize: 'var(--fs-xs)' }}>{s.trade_name}</div>}
@@ -137,7 +170,8 @@ export function SuppliersPage() {
             <button className="btn btn-sm" disabled={currentPage <= 1}    onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
             <button className="btn btn-sm" disabled={currentPage >= pages} onClick={() => setCurrentPage((p) => p + 1)}>Próxima →</button>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={editingId ? 'Editar fornecedor' : 'Novo fornecedor'} size="lg"

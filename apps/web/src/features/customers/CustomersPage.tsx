@@ -6,6 +6,8 @@ import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { FieldLabel } from '../../components/ui/Hint';
+import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
+import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { maskCPF, maskCNPJ, maskPhone } from '../../lib/format';
 import { IconPerson, IconPlus, IconSearch, IconHistory } from '../../components/ui/icons';
 
@@ -31,6 +33,7 @@ export function CustomersPage() {
   const [form, setForm]                   = useState<any>({ ...EMPTY });
   const [editingId, setEditingId]         = useState<string | null>(null);
   const [history, setHistory]             = useState<{ customer: { id: string; name: string }; entries: HistoryEntry[] } | null>(null);
+  const bulk = useBulkSelection(page.items);
   useEffect(() => { if ((location.state as any)?.autoOpen === 'new') setOpen(true); }, []); // eslint-disable-line
 
   async function load(p = currentPage) {
@@ -82,7 +85,29 @@ export function CustomersPage() {
     setHistory(data);
   }
 
+  async function bulkInactivate() {
+    const targets = page.items.filter((c) => bulk.isSelected(c.id) && c.status === 'active');
+    if (targets.length === 0) return;
+    const ok = await confirm({ title: `Inativar ${targets.length} cliente(s)?`, message: 'Os clientes deixam de aparecer nas listas, mas o histórico é mantido.', confirmText: 'Sim, inativar', danger: true });
+    if (!ok) return;
+    await Promise.all(targets.map((c) => api.patch(`/customers/${c.id}/inactivate`)));
+    toast.push(`${targets.length} cliente(s) inativado(s).`, 'success');
+    bulk.clear();
+    await load();
+  }
+
+  async function bulkActivate() {
+    const targets = page.items.filter((c) => bulk.isSelected(c.id) && c.status !== 'active');
+    if (targets.length === 0) return;
+    await Promise.all(targets.map((c) => api.patch(`/customers/${c.id}/activate`)));
+    toast.push(`${targets.length} cliente(s) reativado(s).`, 'success');
+    bulk.clear();
+    await load();
+  }
+
   const { items, total, pages } = page;
+  const activeSelectedCount = items.filter((c) => bulk.isSelected(c.id) && c.status === 'active').length;
+  const inactiveSelectedCount = items.filter((c) => bulk.isSelected(c.id) && c.status !== 'active').length;
 
   return (
     <div>
@@ -115,12 +140,20 @@ export function CustomersPage() {
           />
         </div>
       ) : (
-        <div className="table-wrap">
+        <>
+          <BulkActionsBar count={bulk.count} onClear={bulk.clear}>
+            {activeSelectedCount > 0 && <button className="btn btn-sm" onClick={bulkInactivate}>Inativar selecionados</button>}
+            {inactiveSelectedCount > 0 && <button className="btn btn-sm" onClick={bulkActivate}>Reativar selecionados</button>}
+          </BulkActionsBar>
+          <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Nome</th><th>Contato</th><th>CPF / CNPJ</th><th>Cidade / UF</th><th>Situação</th><th></th></tr></thead>
+            <thead><tr>
+              <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
+              <th>Nome</th><th>Contato</th><th>CPF / CNPJ</th><th>Cidade / UF</th><th>Situação</th><th></th></tr></thead>
             <tbody>
               {items.map((c) => (
                 <tr key={c.id}>
+                  <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${c.name}`} checked={bulk.isSelected(c.id)} onChange={() => bulk.toggle(c.id)} /></td>
                   <td style={{ fontWeight: 500 }}>{c.name}</td>
                   <td className="muted">
                     {c.phone && <div>{c.phone}</div>}
@@ -146,7 +179,8 @@ export function CustomersPage() {
             <button className="btn btn-sm" disabled={currentPage <= 1}    onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
             <button className="btn btn-sm" disabled={currentPage >= pages} onClick={() => setCurrentPage((p) => p + 1)}>Próxima →</button>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Modal formulário */}
