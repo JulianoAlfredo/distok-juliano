@@ -57,4 +57,9 @@ module.exports = async function suppliersRoutes(app) {
     req.ctx.ip = req.ip;
     return service.activate(req.ctx, req.params.id);
   });
+
+  app.get('/:id/history', adminOnly, async (req) => {
+    req.ctx.ip = req.ip;
+    return service.history(req.ctx, req.params.id);
+  });
 };

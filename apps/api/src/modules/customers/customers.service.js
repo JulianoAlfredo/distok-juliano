@@ -86,20 +86,8 @@ async function activate(ctx, id) {
 async function history(ctx, id) {
   const customer = await repo(ctx).findById(id);
   if (!customer) throw Errors.notFound('Cliente não encontrado');
-  const rows = await knex('audit_log')
-    .where({ entity_type: 'customer', entity_id: id, tenant_id: ctx.tenantId })
-    .orderBy('created_at', 'desc')
-    .limit(50)
-    .leftJoin('users', 'users.id', 'audit_log.user_id')
-    .select(
-      'audit_log.id',
-      'audit_log.action',
-      'audit_log.before_json',
-      'audit_log.after_json',
-      'audit_log.created_at',
-      'users.name as user_name'
-    );
-  return { customer: { id: customer.id, name: customer.name }, entries: rows };
+  const entries = await audit.history(ctx, 'customer', id);
+  return { customer: { id: customer.id, name: customer.name }, entries };
 }
 
 module.exports = { list, get, create, update, inactivate, activate, history };

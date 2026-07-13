@@ -13,6 +13,7 @@ import { IconPlus, IconSearch, IconClose, IconArrowUp } from '../../components/u
 type Customer = { id: string; name: string };
 type Product  = { id: string; name: string; sku: string | null; unit: string; sale_price: number };
 type CartItem = { productId: string; productName: string; unit: string; quantity: number; unitPrice: number; discount: number };
+type Payment  = { method: string; amount: number; received_amount: number | null; change_amount: number | null };
 type Sale     = { id: string; number: number; status: string; total: number; subtotal: number; discount: number; payment_method: string; sold_at: string; customer_name: string | null; user_name: string | null };
 type Page     = { items: Sale[]; total: number; page: number; pages: number };
 
@@ -23,6 +24,11 @@ const PAYMENT_METHODS = [
 ];
 const STATUS_BADGE: Record<string, string> = { open: 'badge-success', cancelled: 'badge-neutral' };
 const STATUS_LABEL: Record<string, string> = { open: 'Concluída', cancelled: 'Cancelada' };
+
+function paymentLabel(method: string) {
+  if (method === 'multiplo') return 'Múltiplas formas';
+  return PAYMENT_METHODS.find((m) => m.value === method)?.label || method;
+}
 
 export function SalesPage() {
   const toast   = useToast();
@@ -83,7 +89,7 @@ export function SalesPage() {
                 <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(s.id)}>
                   <td style={{ fontWeight: 700 }}>#{s.number}</td>
                   <td>{s.customer_name || <span className="muted">Avulsa</span>}</td>
-                  <td className="muted">{PAYMENT_METHODS.find((m) => m.value === s.payment_method)?.label || s.payment_method}</td>
+                  <td className="muted">{paymentLabel(s.payment_method)}</td>
                   <td style={{ fontWeight: 600 }}>{formatBRL(Number(s.total))}</td>
                   <td className="muted">{new Date(s.sold_at).toLocaleDateString('pt-BR')}</td>
                   <td><span className={`badge ${STATUS_BADGE[s.status]}`}>{STATUS_LABEL[s.status]}</span></td>
@@ -115,7 +121,15 @@ export function SalesPage() {
           <>
             <div className="grid-2" style={{ marginBottom: 'var(--sp-5)' }}>
               <div><div className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' }}>Cliente</div><div>{detail.customer_name || '—'}</div></div>
-              <div><div className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' }}>Pagamento</div><div>{PAYMENT_METHODS.find((m) => m.value === detail.payment_method)?.label || detail.payment_method}</div></div>
+              <div>
+                <div className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' }}>Pagamento</div>
+                {(detail.payments && detail.payments.length > 0 ? detail.payments : [{ method: detail.payment_method, amount: detail.total, change_amount: null }]).map((p: Payment, i: number) => (
+                  <div key={i}>
+                    {paymentLabel(p.method)} — {formatBRL(Number(p.amount))}
+                    {Number(p.change_amount) > 0 && <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}> (troco {formatBRL(Number(p.change_amount))})</span>}
+                  </div>
+                ))}
+              </div>
               <div><div className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' }}>Data</div><div>{new Date(detail.sold_at).toLocaleDateString('pt-BR')}</div></div>
               <div><div className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' }}>Responsável</div><div>{detail.user_name || '—'}</div></div>
             </div>
@@ -151,11 +165,13 @@ export function SalesPage() {
 
 // ─── Modal Nova Venda ─────────────────────────────────────────────────────────
 
+type PaymentLine = { method: string; amount: number; receivedAmount?: number };
+
 function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [customers, setCustomers]       = useState<Customer[]>([]);
   const [customerId, setCustomerId]     = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('dinheiro');
+  const [payments, setPayments]         = useState<PaymentLine[]>([{ method: 'dinheiro', amount: 0 }]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [notes, setNotes]               = useState('');
   const [cart, setCart]                 = useState<CartItem[]>([]);
@@ -164,7 +180,7 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
   const [saving, setSaving]             = useState(false);
 
   useEffect(() => {
-    if (!open) { setCustomerId(''); setPaymentMethod('dinheiro'); setGlobalDiscount(0); setNotes(''); setCart([]); setProductQuery(''); setProductResults([]); return; }
+    if (!open) { setCustomerId(''); setPayments([{ method: 'dinheiro', amount: 0 }]); setGlobalDiscount(0); setNotes(''); setCart([]); setProductQuery(''); setProductResults([]); return; }
     api.get('/customers', { params: { status: 'active', page: 1 } }).then(({ data }) => setCustomers(data.items)).catch(() => {});
   }, [open]);
 
@@ -186,6 +202,21 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
     }
   }
 
+  /** Leitor de código de barras: Enter num código exato (SKU) adiciona direto ao carrinho, sem precisar clicar. */
+  async function handleScanEnter() {
+    const q = productQuery.trim();
+    if (!q) return;
+    let match = productResults.find((p) => p.sku && p.sku.toLowerCase() === q.toLowerCase());
+    if (!match) {
+      try {
+        const { data } = await api.get('/products', { params: { search: q, status: 'active' } });
+        match = data.find((p: Product) => p.sku && p.sku.toLowerCase() === q.toLowerCase()) || (data.length === 1 ? data[0] : undefined);
+      } catch { /* ignore */ }
+    }
+    if (match) addProduct(match);
+    else toast.push('Nenhum produto encontrado para esse código.', 'error');
+  }
+
   function updateCart(idx: number, field: keyof CartItem, val: number) {
     setCart((prev) => prev.map((it, i) => i === idx ? { ...it, [field]: val } : it));
   }
@@ -193,15 +224,39 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
   const subtotal = cart.reduce((s, i) => s + i.quantity * i.unitPrice - i.discount, 0);
   const total    = Math.max(0, subtotal - globalDiscount);
 
+  // Com uma única forma de pagamento, o valor acompanha o total automaticamente.
+  useEffect(() => {
+    setPayments((prev) => prev.length === 1 ? [{ ...prev[0], amount: total }] : prev);
+  }, [total]);
+
+  const paymentsTotal = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const paymentsDiff  = Math.round((total - paymentsTotal) * 100) / 100;
+
+  function addPaymentLine() {
+    setPayments((prev) => [...prev, { method: 'dinheiro', amount: Math.max(0, paymentsDiff) }]);
+  }
+  function removePaymentLine(idx: number) {
+    setPayments((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function updatePayment(idx: number, patch: Partial<PaymentLine>) {
+    setPayments((prev) => prev.map((p, i) => i === idx ? { ...p, ...patch } : p));
+  }
+
   async function save() {
     if (cart.length === 0) return toast.push('Adicione ao menos um produto.', 'error');
+    if (Math.abs(paymentsDiff) > 0.009) return toast.push('A soma dos pagamentos deve ser igual ao total da venda.', 'error');
+    for (const p of payments) {
+      if (p.method === 'dinheiro' && p.receivedAmount != null && p.receivedAmount < p.amount) {
+        return toast.push('Valor recebido não pode ser menor que o valor da forma de pagamento.', 'error');
+      }
+    }
     setSaving(true);
     try {
       await api.post('/sales', {
-        customerId:    customerId || undefined,
-        paymentMethod,
-        notes:         notes || undefined,
-        discount:      globalDiscount,
+        customerId: customerId || undefined,
+        payments: payments.map((p) => ({ method: p.method, amount: p.amount, receivedAmount: p.method === 'dinheiro' ? p.receivedAmount : undefined })),
+        notes:      notes || undefined,
+        discount:   globalDiscount,
         items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount })),
       });
       toast.push('Venda registrada e estoque atualizado!', 'success');
@@ -232,12 +287,6 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
           </select>
         </div>
         <div className="field" style={{ margin: 0 }}>
-          <FieldLabel required>Forma de pagamento</FieldLabel>
-          <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-            {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-        </div>
-        <div className="field" style={{ margin: 0 }}>
           <FieldLabel hint="Desconto sobre o total geral.">Desconto geral</FieldLabel>
           <MoneyInput value={globalDiscount} onChange={setGlobalDiscount} />
         </div>
@@ -248,11 +297,12 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
       </div>
 
       <div className="field" style={{ marginBottom: 'var(--sp-4)' }}>
-        <FieldLabel>Adicionar produto</FieldLabel>
+        <FieldLabel hint="Digite para buscar ou use um leitor de código de barras — Enter adiciona direto ao carrinho.">Adicionar produto</FieldLabel>
         <div style={{ position: 'relative' }}>
           <span style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-faint)' }}><IconSearch width={18} height={18} /></span>
-          <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar por nome ou código"
-            value={productQuery} autoFocus onChange={(e) => setProductQuery(e.target.value)} />
+          <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar por nome ou escanear código de barras"
+            value={productQuery} autoFocus onChange={(e) => setProductQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleScanEnter(); } }} />
           {productResults.length > 0 && (
             <div style={{ border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-md)', marginTop: 4, overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
               {productResults.map((p) => (
@@ -299,6 +349,42 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
           <div style={{ textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--sp-3)', marginTop: 'var(--sp-3)' }}>
             <div className="muted" style={{ fontSize: 'var(--fs-sm)' }}>Subtotal: {formatBRL(subtotal)}</div>
             {globalDiscount > 0 && <div className="muted" style={{ fontSize: 'var(--fs-sm)' }}>Desconto: -{formatBRL(globalDiscount)}</div>}
+          </div>
+
+          <div style={{ marginTop: 'var(--sp-5)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--sp-4)' }}>
+            <FieldLabel required>Pagamento</FieldLabel>
+            {payments.map((p, idx) => {
+              const change = p.method === 'dinheiro' && p.receivedAmount != null ? p.receivedAmount - p.amount : null;
+              return (
+                <div key={idx} style={{ marginBottom: 'var(--sp-3)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: p.method === 'dinheiro' ? '1fr 130px 130px 32px' : '1fr 130px 32px', gap: 'var(--sp-3)' }}>
+                    <select className="input" value={p.method} onChange={(e) => updatePayment(idx, { method: e.target.value, receivedAmount: undefined })}>
+                      {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                    <MoneyInput value={p.amount} onChange={(v) => updatePayment(idx, { amount: v })} />
+                    {p.method === 'dinheiro' && (
+                      <MoneyInput value={p.receivedAmount ?? p.amount} onChange={(v) => updatePayment(idx, { receivedAmount: v })} />
+                    )}
+                    {payments.length > 1 ? (
+                      <button className="btn btn-sm btn-ghost" aria-label="Remover forma de pagamento" onClick={() => removePaymentLine(idx)}><IconClose width={15} height={15} /></button>
+                    ) : <span />}
+                  </div>
+                  {change != null && change > 0 && (
+                    <div className="muted" style={{ fontSize: 'var(--fs-sm)', marginTop: 4 }}>
+                      Troco: <strong style={{ color: 'var(--color-success)' }}>{formatBRL(change)}</strong>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <button className="btn btn-sm" onClick={addPaymentLine} disabled={paymentsDiff <= 0}>+ Adicionar outra forma de pagamento</button>
+              {Math.abs(paymentsDiff) > 0.009 && (
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-danger)' }}>
+                  {paymentsDiff > 0 ? `Faltam ${formatBRL(paymentsDiff)}` : `Excede em ${formatBRL(-paymentsDiff)}`}
+                </span>
+              )}
+            </div>
           </div>
         </>
       )}

@@ -84,4 +84,11 @@ async function inactivate(ctx, id) {
   return get(ctx, id);
 }
 
-module.exports = { list, get, create, update, inactivate, margin };
+async function history(ctx, id) {
+  const product = await repo(ctx).findById(id);
+  if (!product) throw Errors.notFound('Produto não encontrado');
+  const entries = await audit.history(ctx, 'product', id);
+  return { product: { id: product.id, name: product.name }, entries };
+}
+
+module.exports = { list, get, create, update, inactivate, history, margin };

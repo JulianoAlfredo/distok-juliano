@@ -7,8 +7,9 @@ const StockLedger = require('../../core/StockLedger');
 const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
 
-function repo(ctx)      { return new TenantScopedRepository(knex, 'sales', ctx); }
-function itemsRepo(ctx) { return new TenantScopedRepository(knex, 'sale_items', ctx); }
+function repo(ctx)         { return new TenantScopedRepository(knex, 'sales', ctx); }
+function itemsRepo(ctx)    { return new TenantScopedRepository(knex, 'sale_items', ctx); }
+function paymentsRepo(ctx) { return new TenantScopedRepository(knex, 'sale_payments', ctx); }
 
 async function nextNumber(ctx, trx) {
   const row = await repo(ctx).query(trx).max({ m: 'number' }).first();
@@ -50,14 +51,25 @@ async function get(ctx, id) {
     .select('sale_items.*', 'products.name as product_name', 'products.unit')
     .where('sale_items.sale_id', id);
 
-  return { ...sale, items };
+  const payments = await paymentsRepo(ctx).query()
+    .select('id', 'method', 'amount', 'received_amount', 'change_amount')
+    .where('sale_id', id);
+
+  return { ...sale, items, payments };
+}
+
+/** Normaliza o(s) meio(s) de pagamento em uma lista de lançamentos [{ method, amount, receivedAmount? }]. */
+function resolvePayments({ payments, paymentMethod, total }) {
+  if (payments && payments.length > 0) return payments;
+  return [{ method: paymentMethod || 'dinheiro', amount: total }];
 }
 
 /**
  * Cria venda e baixa o estoque imediatamente.
  * items: [{ productId, quantity, unitPrice, discount }]
+ * payments (opcional, permite dividir entre meios): [{ method, amount, receivedAmount? }]
  */
-async function create(ctx, { customerId, paymentMethod, notes, discount: globalDiscount = 0, items }) {
+async function create(ctx, { customerId, paymentMethod, payments, notes, discount: globalDiscount = 0, items }) {
   if (!items || items.length === 0) throw Errors.validation('Informe ao menos um item');
 
   const productRepo = new TenantScopedRepository(knex, 'products', ctx);
@@ -69,7 +81,19 @@ async function create(ctx, { customerId, paymentMethod, notes, discount: globalD
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice - (i.discount || 0), 0);
   const total    = Math.max(0, subtotal - (globalDiscount || 0));
-  const id       = uuid();
+
+  const resolvedPayments = resolvePayments({ payments, paymentMethod, total });
+  const paymentsTotal = resolvedPayments.reduce((s, p) => s + Number(p.amount), 0);
+  if (Math.abs(paymentsTotal - total) > 0.01) {
+    throw Errors.validation('A soma dos pagamentos deve ser igual ao total da venda');
+  }
+  for (const p of resolvedPayments) {
+    if (p.receivedAmount != null && Number(p.receivedAmount) < Number(p.amount)) {
+      throw Errors.validation('Valor recebido não pode ser menor que o valor pago');
+    }
+  }
+
+  const id = uuid();
   let   number;
 
   await knex.transaction(async (trx) => {
@@ -83,7 +107,7 @@ async function create(ctx, { customerId, paymentMethod, notes, discount: globalD
       subtotal,
       discount:       globalDiscount || 0,
       total,
-      payment_method: paymentMethod || 'dinheiro',
+      payment_method: resolvedPayments.length > 1 ? 'multiplo' : resolvedPayments[0].method,
       notes:          notes || null,
     }, trx);
 
@@ -97,6 +121,18 @@ async function create(ctx, { customerId, paymentMethod, notes, discount: globalD
         unit_price: it.unitPrice,
         discount:   it.discount || 0,
         total:      itTotal,
+      }, trx);
+    }
+
+    for (const p of resolvedPayments) {
+      const receivedAmount = p.receivedAmount != null ? Number(p.receivedAmount) : null;
+      await paymentsRepo(ctx).insert({
+        id:              uuid(),
+        sale_id:         id,
+        method:          p.method,
+        amount:          p.amount,
+        received_amount: receivedAmount,
+        change_amount:   receivedAmount != null ? receivedAmount - Number(p.amount) : null,
       }, trx);
     }
   });

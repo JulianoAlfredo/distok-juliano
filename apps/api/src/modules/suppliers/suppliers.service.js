@@ -82,4 +82,11 @@ async function activate(ctx, id) {
   return get(ctx, id);
 }
 
-module.exports = { list, get, create, update, inactivate, activate };
+async function history(ctx, id) {
+  const supplier = await repo(ctx).findById(id);
+  if (!supplier) throw Errors.notFound('Fornecedor não encontrado');
+  const entries = await audit.history(ctx, 'supplier', id);
+  return { supplier: { id: supplier.id, name: supplier.name }, entries };
+}
+
+module.exports = { list, get, create, update, inactivate, activate, history };

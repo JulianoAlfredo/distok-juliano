@@ -2,19 +2,21 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { PageHeader, StatusBadge, EmptyState, Loading } from '../../components/ui';
 import { Modal } from '../../components/ui/Modal';
+import { HistoryModal, HistoryEntry } from '../../components/ui/HistoryModal';
 import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { FieldLabel } from '../../components/ui/Hint';
 import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { maskCPF, maskCNPJ, maskPhone } from '../../lib/format';
-import { IconTruck, IconPlus, IconSearch } from '../../components/ui/icons';
+import { IconTruck, IconPlus, IconSearch, IconHistory } from '../../components/ui/icons';
 
 type Supplier = { id: string; name: string; trade_name: string | null; cnpj: string | null; cpf: string | null; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; contact: string | null; notes: string | null; status: string };
 type Page = { items: Supplier[]; total: number; page: number; pages: number };
 
 const EMPTY = { name: '', trade_name: '', cnpj: '', cpf: '', email: '', phone: '', address: '', city: '', state: '', contact: '', notes: '' };
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+const ACTION_LABEL: Record<string, string> = { 'supplier.create': 'Cadastro', 'supplier.update': 'Edição', 'supplier.inactivate': 'Inativação', 'supplier.activate': 'Reativação' };
 
 export function SuppliersPage() {
   const toast   = useToast();
@@ -28,6 +30,7 @@ export function SuppliersPage() {
   const [open, setOpen]               = useState(false);
   const [form, setForm]               = useState<any>({ ...EMPTY });
   const [editingId, setEditingId]     = useState<string | null>(null);
+  const [history, setHistory]         = useState<{ supplier: { id: string; name: string }; entries: HistoryEntry[] } | null>(null);
   const bulk = useBulkSelection(page.items);
 
   async function load(p = currentPage) {
@@ -72,6 +75,11 @@ export function SuppliersPage() {
       toast.push('Fornecedor reativado.', 'success');
     }
     await load();
+  }
+
+  async function openHistory(s: Supplier) {
+    const { data } = await api.get(`/suppliers/${s.id}/history`);
+    setHistory(data);
   }
 
   async function bulkInactivate() {
@@ -159,6 +167,7 @@ export function SuppliersPage() {
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
                       <button className="btn btn-sm" onClick={() => startEdit(s)}>Editar</button>
                       <button className="btn btn-sm" onClick={() => toggleStatus(s)}>{s.status === 'active' ? 'Inativar' : 'Reativar'}</button>
+                      <button className="btn btn-sm btn-ghost" title="Histórico" aria-label="Ver histórico" onClick={() => openHistory(s)}><IconHistory width={15} height={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -232,6 +241,14 @@ export function SuppliersPage() {
           </div>
         </div>
       </Modal>
+
+      <HistoryModal
+        open={!!history}
+        onClose={() => setHistory(null)}
+        title={history ? `${history.supplier.name} — Histórico` : ''}
+        entries={history?.entries || []}
+        actionLabels={ACTION_LABEL}
+      />
     </div>
   );
 }

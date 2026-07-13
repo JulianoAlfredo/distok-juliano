@@ -22,4 +22,24 @@ async function record({ ctx, action, entityType, entityId, before, after, ip }, 
   await (trx || knex)('audit_log').insert(row);
 }
 
-module.exports = { record };
+/**
+ * Lista o histórico de auditoria de uma entidade (mais recente primeiro),
+ * já com o nome do usuário responsável.
+ */
+async function history(ctx, entityType, entityId, { limit = 50 } = {}) {
+  return knex('audit_log')
+    .where({ entity_type: entityType, entity_id: entityId, tenant_id: ctx.tenantId })
+    .orderBy('created_at', 'desc')
+    .limit(limit)
+    .leftJoin('users', 'users.id', 'audit_log.user_id')
+    .select(
+      'audit_log.id',
+      'audit_log.action',
+      'audit_log.before_json',
+      'audit_log.after_json',
+      'audit_log.created_at',
+      'users.name as user_name'
+    );
+}
+
+module.exports = { record, history };

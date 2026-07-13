@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { PageHeader, StatusBadge, EmptyState, Loading } from '../../components/ui';
 import { Modal } from '../../components/ui/Modal';
+import { HistoryModal, HistoryEntry } from '../../components/ui/HistoryModal';
 import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { MoneyInput } from '../../components/ui/MoneyInput';
@@ -12,11 +13,12 @@ import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { formatBRL } from '../../lib/format';
-import { IconBox, IconPlus, IconSearch } from '../../components/ui/icons';
+import { IconBox, IconPlus, IconSearch, IconHistory } from '../../components/ui/icons';
 
 type CatalogItem = { id: string; name: string; symbol?: string };
 type Product = { id: string; name: string; sku: string | null; category: string | null; unit: string; cost_price: number; sale_price: number; min_stock: number; status: string; margin: number | null };
 const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0 };
+const ACTION_LABEL: Record<string, string> = { 'product.create': 'Cadastro', 'product.update': 'Edição', 'product.inactivate': 'Inativação' };
 
 export function ProductsPage() {
   const { t } = useTheme();
@@ -33,6 +35,7 @@ export function ProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categories, setCategories] = useState<CatalogItem[]>([]);
   const [units, setUnits]           = useState<CatalogItem[]>([]);
+  const [history, setHistory]       = useState<{ product: { id: string; name: string }; entries: HistoryEntry[] } | null>(null);
   const term = t('product').toLowerCase();
   const bulk = useBulkSelection(items);
 
@@ -86,6 +89,11 @@ export function ProductsPage() {
     await api.patch(`/products/${p.id}/inactivate`);
     toast.push('Item inativado.', 'success');
     await load();
+  }
+
+  async function openHistory(p: Product) {
+    const { data } = await api.get(`/products/${p.id}/history`);
+    setHistory(data);
   }
 
   async function bulkInactivate() {
@@ -147,6 +155,7 @@ export function ProductsPage() {
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
                       <button className="btn btn-sm" onClick={() => startEdit(p)}>Editar</button>
                       {p.status === 'active' && <button className="btn btn-sm" onClick={() => inactivate(p)}>Inativar</button>}
+                      <button className="btn btn-sm btn-ghost" title="Histórico" aria-label="Ver histórico" onClick={() => openHistory(p)}><IconHistory width={15} height={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -222,6 +231,14 @@ export function ProductsPage() {
           </div>
         </div>
       </Modal>
+
+      <HistoryModal
+        open={!!history}
+        onClose={() => setHistory(null)}
+        title={history ? `${history.product.name} — Histórico` : ''}
+        entries={history?.entries || []}
+        actionLabels={ACTION_LABEL}
+      />
     </div>
   );
 }

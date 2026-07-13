@@ -29,6 +29,17 @@ module.exports = async function salesRoutes(app) {
         properties: {
           customerId:    { type: 'string' },
           paymentMethod: { type: 'string' },
+          payments: {
+            type: 'array', minItems: 1,
+            items: {
+              type: 'object', required: ['method', 'amount'],
+              properties: {
+                method:         { type: 'string' },
+                amount:         { type: 'number', minimum: 0 },
+                receivedAmount: { type: 'number', minimum: 0 },
+              },
+            },
+          },
           notes:         { type: 'string' },
           discount:      { type: 'number', minimum: 0 },
           items: {
