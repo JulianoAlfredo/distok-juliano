@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-DISTOK — multi-tenant SaaS inventory management for distributors. Node.js/Fastify API (`apps/api`), React/Vite/TS frontend (`apps/web`), shared enums (`packages/shared`). MySQL (Hostinger-hosted) via Knex. Stack is locked: MySQL only (no Postgres/Supabase/RLS), deployed as a Node app on Hostinger (Passenger). See `docs/architecture.md` for the full spec and `docs/prd.md`/`docs/ux-design.md`/`docs/workflow.md` for product/design/process context.
+DISTOK — multi-tenant SaaS inventory management for distributors. Node.js/Fastify API (`apps/api`), React/Vite/TS frontend (`apps/web`), shared enums (`packages/shared`), static marketing site (`apps/landing`, standalone single-file HTML — no build, no shared code, see `apps/landing/README.md`). MySQL (Hostinger-hosted) via Knex. Stack is locked: MySQL only (no Postgres/Supabase/RLS). The API is deployed as a Node app on Hostinger (Passenger); the frontend and landing page are static builds and can be hosted anywhere (Hostinger, Vercel, Netlify) — the frontend just needs `VITE_API_URL` pointed at wherever the API lives. See `docs/architecture.md` for the full spec and `docs/prd.md`/`docs/ux-design.md`/`docs/workflow.md` for product/design/process context.
 
 ## Commands
 
