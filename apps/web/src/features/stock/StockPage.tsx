@@ -55,7 +55,7 @@ function LaunchModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   useEffect(() => {
     if (query.length < 1) { setResults([]); return; }
     const h = setTimeout(() => {
-      api.get('/products', { params: { search: query, status: 'active' } }).then(({ data }) => setResults(data.slice(0, 6)));
+      api.get('/products', { params: { search: query, status: 'active' } }).then(({ data }) => setResults((data.items ?? data).slice(0, 6)));
     }, 250);
     return () => clearTimeout(h);
   }, [query]);
@@ -157,15 +157,19 @@ function LaunchModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 function BalanceList({ onLaunch }: { onLaunch: () => void }) {
   const [items, setItems]     = useState<Balance[]>([]);
+  const [total, setTotal]     = useState(0);
+  const [pages, setPages]     = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [belowMin, setBelowMin] = useState(false);
   const [search, setSearch]   = useState('');
   const [extract, setExtract] = useState<any | null>(null);
 
-  async function load() {
-    const { data } = await api.get('/stock/balance', { params: { belowMin: belowMin || undefined, search: search || undefined } });
-    setItems(data);
+  async function load(p = currentPage) {
+    const { data } = await api.get('/stock/balance', { params: { belowMin: belowMin || undefined, search: search || undefined, page: p } });
+    setItems(data.items); setTotal(data.total); setPages(data.pages);
   }
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [belowMin]);
+  useEffect(() => { load(1); setCurrentPage(1); /* eslint-disable-next-line */ }, [belowMin]);
+  useEffect(() => { load(currentPage); /* eslint-disable-next-line */ }, [currentPage]);
 
   async function openExtract(productId: string) {
     const { data } = await api.get(`/stock/products/${productId}/movements`);
@@ -177,7 +181,7 @@ function BalanceList({ onLaunch }: { onLaunch: () => void }) {
       <div className="row" style={{ marginBottom: 'var(--sp-4)', flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
         <div style={{ position: 'relative', maxWidth: 300, flex: 1 }}>
           <span style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-faint)' }}><IconSearch width={18} height={18} /></span>
-          <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar produto" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} />
+          <input className="input" style={{ paddingLeft: 38 }} placeholder="Buscar produto" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setCurrentPage(1); load(1); } }} />
         </div>
         <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
           <input type="checkbox" checked={belowMin} onChange={(e) => setBelowMin(e.target.checked)} /> Só abaixo do mínimo
@@ -206,6 +210,11 @@ function BalanceList({ onLaunch }: { onLaunch: () => void }) {
               ))}
             </tbody>
           </table>
+          <div className="pagination">
+            <span className="pagination-info">{total} item{total !== 1 ? 's' : ''} — página {currentPage} de {pages}</span>
+            <button className="btn btn-sm" disabled={currentPage <= 1}    onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
+            <button className="btn btn-sm" disabled={currentPage >= pages} onClick={() => setCurrentPage((p) => p + 1)}>Próxima →</button>
+          </div>
         </div>
       )}
 

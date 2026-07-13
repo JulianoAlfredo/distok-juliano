@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
+import { useTheme } from '../../theme/ThemeProvider';
 import { PageHeader, EmptyState, Loading } from '../../components/ui';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -8,7 +9,7 @@ import { useConfirm } from '../../components/ui/Confirm';
 import { FieldLabel } from '../../components/ui/Hint';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { formatBRL } from '../../lib/format';
-import { IconPlus, IconSearch, IconClose, IconArrowUp } from '../../components/ui/icons';
+import { IconPlus, IconSearch, IconClose, IconArrowUp, IconPrinter } from '../../components/ui/icons';
 
 type Customer = { id: string; name: string };
 type Product  = { id: string; name: string; sku: string | null; unit: string; sale_price: number };
@@ -34,6 +35,7 @@ export function SalesPage() {
   const toast   = useToast();
   const confirm = useConfirm();
   const location = useLocation();
+  const { branding } = useTheme();
   const [page, setPage]               = useState<Page>({ items: [], total: 0, page: 1, pages: 1 });
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading]         = useState(true);
@@ -113,8 +115,11 @@ export function SalesPage() {
         title={detail ? `Venda #${detail.number}` : ''}
         subtitle={detail ? STATUS_LABEL[detail.status] : undefined}
         size="lg"
-        footer={detail?.status === 'open' ? (
-          <button className="btn" onClick={() => doCancel(detail.id, detail.number)}>Cancelar venda</button>
+        footer={detail ? (
+          <>
+            <button className="btn" onClick={() => window.print()}><IconPrinter width={16} height={16} /> Imprimir recibo</button>
+            {detail.status === 'open' && <button className="btn" onClick={() => doCancel(detail.id, detail.number)}>Cancelar venda</button>}
+          </>
         ) : undefined}
       >
         {detail && (
@@ -159,6 +164,47 @@ export function SalesPage() {
 
       {/* Modal nova venda */}
       <SaleFormModal open={newOpen} onClose={() => setNewOpen(false)} onSaved={() => { setNewOpen(false); load(1); setCurrentPage(1); }} />
+
+      {/* Recibo — só aparece na impressão (@media print em tokens.css) */}
+      {detail && (
+        <div id="receipt-print">
+          <div className="receipt">
+            <div className="receipt-head">
+              {branding.logo_url && <img className="receipt-logo" src={branding.logo_url} alt="" />}
+              <h2>{branding.display_name || 'DISTOK'}</h2>
+              <div>Venda #{detail.number}</div>
+              <div>{new Date(detail.sold_at).toLocaleString('pt-BR')}</div>
+              {detail.customer_name && <div>Cliente: {detail.customer_name}</div>}
+            </div>
+            <hr className="receipt-hr" />
+            {detail.items.map((it: any) => (
+              <div key={it.id}>
+                <div className="receipt-row"><span className="receipt-item-name">{it.product_name}</span></div>
+                <div className="receipt-row">
+                  <span className="muted">{it.quantity} {it.unit} x {formatBRL(Number(it.unit_price))}</span>
+                  <span>{formatBRL(Number(it.total))}</span>
+                </div>
+              </div>
+            ))}
+            <hr className="receipt-hr" />
+            {Number(detail.discount) > 0 && (
+              <div className="receipt-row"><span>Desconto</span><span>-{formatBRL(Number(detail.discount))}</span></div>
+            )}
+            <div className="receipt-row receipt-total"><span>Total</span><span>{formatBRL(Number(detail.total))}</span></div>
+            <hr className="receipt-hr" />
+            {(detail.payments && detail.payments.length > 0 ? detail.payments : [{ method: detail.payment_method, amount: detail.total, change_amount: null }]).map((p: Payment, i: number) => (
+              <div key={i} className="receipt-row">
+                <span>{paymentLabel(p.method)}</span>
+                <span>{formatBRL(Number(p.amount))}{Number(p.change_amount) > 0 ? ` (troco ${formatBRL(Number(p.change_amount))})` : ''}</span>
+              </div>
+            ))}
+            <div className="receipt-foot">
+              {detail.user_name && <div>Atendido por {detail.user_name}</div>}
+              <div>Obrigado pela preferência!</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -187,7 +233,7 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
   useEffect(() => {
     if (productQuery.length < 1) { setProductResults([]); return; }
     const h = setTimeout(() => {
-      api.get('/products', { params: { search: productQuery, status: 'active' } }).then(({ data }) => setProductResults(data.slice(0, 6))).catch(() => {});
+      api.get('/products', { params: { search: productQuery, status: 'active' } }).then(({ data }) => setProductResults((data.items ?? data).slice(0, 6))).catch(() => {});
     }, 250);
     return () => clearTimeout(h);
   }, [productQuery]);
@@ -210,7 +256,8 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
     if (!match) {
       try {
         const { data } = await api.get('/products', { params: { search: q, status: 'active' } });
-        match = data.find((p: Product) => p.sku && p.sku.toLowerCase() === q.toLowerCase()) || (data.length === 1 ? data[0] : undefined);
+        const list = data.items ?? data;
+        match = list.find((p: Product) => p.sku && p.sku.toLowerCase() === q.toLowerCase()) || (list.length === 1 ? list[0] : undefined);
       } catch { /* ignore */ }
     }
     if (match) addProduct(match);

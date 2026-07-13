@@ -103,4 +103,16 @@ async function cashflow(ctx, { year, month }) {
   return { totalReceivable, totalPayable, totalReceived, totalPaid, balance: totalReceivable - totalPayable, entries: rows, overdue };
 }
 
-module.exports = { list, get, create, markPaid, cancel, cashflow };
+/** Cancela lançamentos pendentes vinculados a uma venda (ex.: venda cancelada). */
+async function cancelForSale(ctx, saleId) {
+  const rows = await repo(ctx).query().where({ 'financial_entries.sale_id': saleId, 'financial_entries.status': 'pending' });
+  for (const row of rows) await cancel(ctx, row.id);
+}
+
+/** Cancela lançamentos pendentes vinculados a uma compra (ex.: compra estornada). */
+async function cancelForPurchase(ctx, purchaseId) {
+  const rows = await repo(ctx).query().where({ 'financial_entries.purchase_id': purchaseId, 'financial_entries.status': 'pending' });
+  for (const row of rows) await cancel(ctx, row.id);
+}
+
+module.exports = { list, get, create, markPaid, cancel, cashflow, cancelForSale, cancelForPurchase };

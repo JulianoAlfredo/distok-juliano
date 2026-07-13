@@ -574,3 +574,20 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   .modal { border-radius: var(--radius-xl) var(--radius-xl) 0 0; max-height: 95vh; animation: modal-slide-up var(--t); }
   @keyframes modal-slide-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 }
+
+/* ---------- Recibo de venda (impressão) ---------- */
+#receipt-print { display: none; }
+.receipt { max-width: 320px; margin: 0 auto; font-size: 12px; color: #000; }
+.receipt-logo { max-height: 40px; max-width: 100%; display: block; margin: 0 auto var(--sp-2); }
+.receipt-head { text-align: center; margin-bottom: var(--sp-3); }
+.receipt-head h2 { font-size: 14px; margin: 0; }
+.receipt-hr { border: none; border-top: 1px dashed #000; margin: var(--sp-2) 0; }
+.receipt-row { display: flex; justify-content: space-between; gap: var(--sp-2); padding: 2px 0; }
+.receipt-item-name { flex: 1; }
+.receipt-total { font-size: 14px; font-weight: 700; }
+.receipt-foot { text-align: center; margin-top: var(--sp-3); font-size: 11px; }
+@media print {
+  body * { visibility: hidden; }
+  #receipt-print, #receipt-print * { visibility: visible; }
+  #receipt-print { display: block; position: absolute; top: 0; left: 0; width: 100%; }
+}

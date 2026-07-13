@@ -28,7 +28,6 @@ async function create(ctx, data) {
   if (![ROLES.ADMIN, ROLES.OPERATOR].includes(data.role)) {
     throw Errors.validation('Nível de acesso inválido');
   }
-  await assertCanAddUser(ctx.tenantId); // FR25
 
   // e-mail único — mensagem genérica (não revela existência da conta) + log interno
   if (await knex('users').where({ email: data.email }).first()) {
@@ -50,7 +49,10 @@ async function create(ctx, data) {
     must_change_password: 1,
     status: USER_STATUS.ACTIVE,
   };
-  await repo(ctx).insert(row);
+  await knex.transaction(async (trx) => {
+    await assertCanAddUser(ctx.tenantId, trx); // FR25, com lock contra corrida
+    await repo(ctx).insert(row, trx);
+  });
   await audit.record({ ctx, action: 'user.create', entityType: 'user', entityId: id, after: { email: data.email, role: data.role }, ip: ctx.ip });
 
   await sendMail({

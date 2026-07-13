@@ -54,6 +54,9 @@ const env = {
     dir: process.env.UPLOADS_DIR || path.resolve(__dirname, '../../uploads'),
     publicUrl: process.env.UPLOADS_PUBLIC_URL || 'http://localhost:3000/uploads',
   },
+
+  // Alerting de erro em produção (P1 #5). Sem DSN, o app roda normalmente sem enviar nada.
+  SENTRY_DSN: process.env.SENTRY_DSN || '',
 };
 
 module.exports = env;

@@ -117,7 +117,7 @@ function PalettePortal({ onClose }: { onClose: () => void }) {
     const h = setTimeout(async () => {
       try {
         const [p, c] = await Promise.all([
-          api.get('/products', { params: { search: query, status: 'active' }, signal: controller.signal }).then((r) => r.data).catch(() => []),
+          api.get('/products', { params: { search: query, status: 'active' }, signal: controller.signal }).then((r) => r.data?.items ?? r.data ?? []).catch(() => []),
           api.get('/customers', { params: { search: query, status: 'active' }, signal: controller.signal }).then((r) => r.data?.items ?? r.data ?? []).catch(() => []),
         ]);
         setProducts(p.slice(0, 5));

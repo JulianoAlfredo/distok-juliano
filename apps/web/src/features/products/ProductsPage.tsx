@@ -17,6 +17,7 @@ import { IconBox, IconPlus, IconSearch, IconHistory } from '../../components/ui/
 
 type CatalogItem = { id: string; name: string; symbol?: string };
 type Product = { id: string; name: string; sku: string | null; category: string | null; unit: string; cost_price: number; sale_price: number; min_stock: number; status: string; margin: number | null };
+type Page = { items: Product[]; total: number; page: number; pages: number };
 const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0 };
 const ACTION_LABEL: Record<string, string> = { 'product.create': 'Cadastro', 'product.update': 'Edição', 'product.inactivate': 'Inativação' };
 
@@ -26,8 +27,9 @@ export function ProductsPage() {
   const confirm = useConfirm();
   const location = useLocation();
   const { errors: fe, validate: validateF, clearAll: clearFE } = useFieldErrors();
-  const [items, setItems]         = useState<Product[]>([]);
+  const [page, setPage]           = useState<Page>({ items: [], total: 0, page: 1, pages: 1 });
   const [search, setSearch]       = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [open, setOpen]           = useState(false);
@@ -37,16 +39,17 @@ export function ProductsPage() {
   const [units, setUnits]           = useState<CatalogItem[]>([]);
   const [history, setHistory]       = useState<{ product: { id: string; name: string }; entries: HistoryEntry[] } | null>(null);
   const term = t('product').toLowerCase();
-  const bulk = useBulkSelection(items);
+  const bulk = useBulkSelection(page.items);
 
-  async function load() {
+  async function load(p = currentPage) {
     setLoading(true);
-    const { data } = await api.get('/products', { params: { search: search || undefined } });
-    setItems(data);
-    setLoading(false);
+    try {
+      const { data } = await api.get('/products', { params: { search: search || undefined, page: p } });
+      setPage(data);
+    } finally { setLoading(false); }
   }
+  useEffect(() => { load(currentPage); /* eslint-disable-next-line */ }, [currentPage]);
   useEffect(() => {
-    load();
     api.get('/catalog/categories').then(({ data }) => setCategories(data)).catch(() => {});
     api.get('/catalog/units').then(({ data }) => setUnits(data)).catch(() => {});
     if ((location.state as any)?.autoOpen === 'new') openNew();
@@ -77,7 +80,8 @@ export function ProductsPage() {
       clearFE();
       setOpen(false);
       toast.push(editingId ? 'Item atualizado.' : 'Item cadastrado.', 'success');
-      await load();
+      if (editingId) await load();
+      else { setCurrentPage(1); await load(1); }
     } catch (e: any) {
       toast.push(e.response?.data?.error?.message || 'Não foi possível salvar.', 'error');
     } finally { setSaving(false); }
@@ -97,7 +101,7 @@ export function ProductsPage() {
   }
 
   async function bulkInactivate() {
-    const targets = items.filter((p) => bulk.isSelected(p.id) && p.status === 'active');
+    const targets = page.items.filter((p) => bulk.isSelected(p.id) && p.status === 'active');
     if (targets.length === 0) { bulk.clear(); return; }
     const ok = await confirm({ title: `Inativar ${targets.length} ${term}(s)?`, message: 'Os itens deixam de aparecer nas listas, mas todo o histórico é mantido.', confirmText: 'Sim, inativar', danger: true });
     if (!ok) return;
@@ -119,12 +123,12 @@ export function ProductsPage() {
         <div style={{ position: 'relative', flex: 1 }}>
           <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}><IconSearch width={18} height={18} /></span>
           <input className="input" style={{ paddingLeft: 38 }} aria-label="Buscar produtos" placeholder="Buscar pelo nome ou código" value={search}
-            onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} />
+            onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { setCurrentPage(1); load(1); } }} />
         </div>
-        <button className="btn" onClick={load}>Buscar</button>
+        <button className="btn" onClick={() => { setCurrentPage(1); load(1); }}>Buscar</button>
       </div>
 
-      {loading ? <Loading /> : items.length === 0 ? (
+      {loading ? <Loading /> : page.items.length === 0 ? (
         <div className="card">
           <EmptyState icon={<IconBox />} title={`Nenhum ${term} cadastrado`} hint='Clique em "Novo" para cadastrar seu primeiro item.'
             action={<button className="btn btn-primary" onClick={openNew}><IconPlus width={16} height={16} /> Novo {term}</button>}
@@ -141,7 +145,7 @@ export function ProductsPage() {
               <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
               <th>Nome</th><th>Código</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Situação</th><th></th></tr></thead>
             <tbody>
-              {items.map((p) => (
+              {page.items.map((p) => (
                 <tr key={p.id}>
                   <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${p.name}`} checked={bulk.isSelected(p.id)} onChange={() => bulk.toggle(p.id)} /></td>
                   <td style={{ fontWeight: 500 }}>{p.name}</td>
@@ -162,6 +166,11 @@ export function ProductsPage() {
               ))}
             </tbody>
           </table>
+          <div className="pagination">
+            <span className="pagination-info">{page.total} {term}{page.total !== 1 ? 's' : ''} — página {currentPage} de {page.pages}</span>
+            <button className="btn btn-sm" disabled={currentPage <= 1}     onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
+            <button className="btn btn-sm" disabled={currentPage >= page.pages} onClick={() => setCurrentPage((p) => p + 1)}>Próxima →</button>
+          </div>
           </div>
         </>
       )}

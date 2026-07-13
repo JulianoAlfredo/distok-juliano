@@ -2,13 +2,17 @@
 
 > Cole este arquivo (ou aponte para ele) ao iniciar uma nova sessão do Claude Code em outra máquina/pasta, junto com o `CLAUDE.md` do repo, para retomar o contexto sem precisar reexplicar tudo.
 
-## ⚠️ Estado do git no momento deste handoff (atualizado — sessão 2026-07-12)
+## ⚠️ Estado do git no momento deste handoff (atualizado — sessão 2026-07-13, tarde)
 
-Branch: `UPDT-Juliano`, sincronizada com `origin/main` (push feito até o commit de #17 + este handoff).
+Branch: `UPDT-Juliano`. Ver `git status`/`git log` para confirmar o que já foi commitado vs. o que ainda está pendente desta sessão (backlog P0+P1 completo, ver seção própria abaixo).
 
-**Pendente de commit nesta sessão:** #18 (histórico de auditoria generalizado) e #12 (PDV aprimorado). Ver detalhes abaixo. Rode `git status` para confirmar o estado exato antes de continuar.
+**⚠️ Duas migrações novas pendentes de aplicar:**
+- `apps/api/src/db/migrations/20260712000001_add_sale_payments.js` (tabela `sale_payments`) — de sessão anterior.
+- `apps/api/src/db/migrations/20260713000001_cashier_multi_session.js` (coluna gerada + constraint única em `cashier_sessions`, ver detalhe do P0 #3 abaixo).
 
-**⚠️ Migração pendente de aplicar:** `apps/api/src/db/migrations/20260712000001_add_sale_payments.js` (tabela `sale_payments`, nova). Não foi possível rodar `npm run migrate` nem os testes de API nesta sessão porque não havia MySQL acessível no ambiente (`DB_HOST=localhost`, `ECONNREFUSED`). **Rode `npm run migrate` e valide manualmente uma venda (inclusive com múltiplos pagamentos) antes de considerar #12 pronto para produção.** Validado apenas via `npm run lint` + `npm run typecheck` (apps/web) + `node -c` (sintaxe) nos arquivos do backend — sem teste funcional contra banco real.
+**⚠️ Nada foi validado contra banco real nesta sessão** — sem MySQL acessível no ambiente (`DB_HOST=localhost`, `ECONNREFUSED`). Validado com: `npm run lint`, `npm run typecheck` (web), e um smoke test que sobe o app Fastify inteiro e registra todas as rotas (`buildApp()` sem `listen()`/DB) — pega erro de import/schema/registro de rota, mas não substitui rodar de verdade. **Rode `npm run migrate` + `npm test` contra um banco real antes de considerar isso pronto pra produção.**
+
+**Gotcha de ambiente resolvido nesta sessão:** se `require('@distok/shared')` (ou qualquer workspace `@distok/*`) der `MODULE_NOT_FOUND` mesmo com o pacote existindo em `packages/shared`, rode `npm install` na raiz — os symlinks/junctions do npm workspaces para `node_modules/@distok/*` podem ficar vazios/quebrados nesse ambiente Windows sem motivo aparente (não é erro de código).
 
 ## O que é o projeto
 
@@ -60,11 +64,25 @@ Credenciais seed (todas com senha `distok123`):
 - Rota `POST /sales` aceita `payments: [{ method, amount, receivedAmount? }]` — mantém `paymentMethod` (string única) como fallback caso algum outro caller antigo ainda mande só isso.
 - **NÃO validado contra banco real** nesta sessão (sem MySQL acessível no ambiente) — só `npm run lint`, `npm run typecheck` (apps/web) e `node -c` nos arquivos backend. **Antes de dar como pronto**: rodar `npm run migrate`, abrir o app, registrar uma venda com (a) pagamento único em dinheiro com troco, (b) pagamento dividido em duas formas, (c) tentar escanear/"Enter" num SKU existente.
 
+## Backlog de produção P0+P1 (sessão 2026-07-13, tarde) — todos implementados
+
+Ver `BACKLOG.md` para a lista completa com racional de cada item; resumo do que mudou:
+
+- **P0 #1 (paginação)**: `products.service.js#list` e `stock.service.js#listBalance` agora retornam `{items,total,page,pages}` como `customers`/`suppliers` já faziam. Isso quebrava os outros lugares que chamam `GET /products` esperando array plano (busca rápida no PDV, Compras, Command Palette) — todos ajustados para ler `data.items ?? data` defensivamente.
+- **P0 #2 (recibo)**: impressão via `window.print()` + `@media print` isolando um `#receipt-print` (padrão "esconde tudo, mostra só isso"), botão no detalhe da venda em `SalesPage.tsx`.
+- **P0 #3 (multi-caixa)**: `cashier_sessions` agora tem 1 sessão aberta **por operador**, não por tenant — via coluna gerada `open_lock` + `UNIQUE KEY` (migração `20260713000001_cashier_multi_session.js`), não só checagem em código. Operador só vê/mexe no próprio caixa (`getSession`/`addEntry` checam `ctx.isAdmin || session.user_id === ctx.userId`); admin continua vendo/fechando qualquer um.
+- **P0 #4 + P1 #7 parcial (testes + locks)**: suítes novas em `tests/{sales,purchases,cashier,financial,auth}/`. Ao escrever os testes de produtos/estoque existentes, achei que eu mesmo tinha quebrado `products.service.test.js` e `stock.service.test.js` com a mudança de paginação (P0 #1) — corrigido.
+- **P1 #5 (Sentry)**: `apps/api/src/utils/sentry.js`, ativa só com `SENTRY_DSN` no `.env` (senão no-op). Falta criar o projeto em sentry.io e preencher a variável — não fiz isso, não tenho como.
+- **P1 #6 (backup)**: `scripts/backup-db.sh` (mysqldump + gzip + rotação local). Falta agendar no Cron Job do hPanel e definir `BACKUP_OFFSITE_CMD` — sem isso o backup não sai do mesmo servidor. Instruções em `docs/deploy-hostinger.md` §8.
+- **P1 #7 (locks)**: caixa coberto acima; limite de plano (`assertCanAddUser`/`assertCanAddProduct`) agora trava a linha do tenant (`FOR UPDATE`) dentro da mesma transação da checagem+insert, em vez de checar antes e inserir depois separadamente.
+- **P1 #8 (estorno de compra)**: `purchases.service.js#cancel` agora reverte a entrada de estoque de um pedido confirmado (bloqueia se o produto já foi parcialmente consumido). Não tenta refazer o custo médio ponderado — não dá pra reconstruir com precisão se houve outra compra/venda do mesmo produto no meio tempo.
+- **P1 #9 (financeiro integrado)**: venda em boleto/cheque → conta a receber automática; compra confirmada → conta a pagar automática (vencimento padrão 30 dias, sem campo de prazo no pedido). Cancelar venda/estornar compra cancela os lançamentos pendentes vinculados.
+
 ## Próximos passos sugeridos
 
-1. Rodar `npm run migrate` e validar #12 manualmente (checklist acima) assim que houver acesso ao MySQL.
-2. Depois de validado, considerar: exibir troco/pagamentos também no PDF/recibo de venda, se existir esse fluxo.
-3. Nenhum módulo do quadro acima ficou pendente além da validação de #12 — revisar `docs/prd.md` para o próximo conjunto de melhorias, se houver.
+1. Rodar `npm run migrate` + `npm test` contra um MySQL real e validar manualmente o checklist da seção "Antes de considerar P0+P1 prontos" em `BACKLOG.md`.
+2. Configurar `SENTRY_DSN` e agendar `scripts/backup-db.sh` no hPanel.
+3. Seguir para o P2 do `BACKLOG.md` (import CSV de produtos, onboarding, mobile) ou revisitar `docs/prd.md` para o próximo conjunto de melhorias.
 
 ## Padrões de implementação (resumo — ver memória/CLAUDE.md para mais)
 

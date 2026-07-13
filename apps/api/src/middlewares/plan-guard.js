@@ -20,10 +20,20 @@ async function getTenantPlan(tenantId) {
   return row;
 }
 
-async function assertCanAddUser(tenantId) {
+/**
+ * @param {string} tenantId
+ * @param {import('knex').Knex.Transaction} [trx] Quando informado, trava a linha do
+ *   tenant (FOR UPDATE) antes de contar — serializa checagens concorrentes do mesmo
+ *   tenant. O insert que decorre da checagem PRECISA acontecer dentro dessa mesma trx,
+ *   senão o lock não fecha a corrida (dois clientes podem passar na contagem antes de
+ *   qualquer um commitar). Sem trx, mantém o comportamento antigo (checagem otimista).
+ */
+async function assertCanAddUser(tenantId, trx) {
   const plan = await getTenantPlan(tenantId);
   if (!plan || plan.max_users == null) return; // ilimitado
-  const { c } = await knex('users')
+  const db = trx || knex;
+  if (trx) await trx('tenants').where({ id: tenantId }).forUpdate().first();
+  const { c } = await db('users')
     .where({ tenant_id: tenantId, status: USER_STATUS.ACTIVE })
     .count({ c: '*' })
     .first();
@@ -35,10 +45,12 @@ async function assertCanAddUser(tenantId) {
   }
 }
 
-async function assertCanAddProduct(tenantId) {
+async function assertCanAddProduct(tenantId, trx) {
   const plan = await getTenantPlan(tenantId);
   if (!plan || plan.max_products == null) return; // ilimitado
-  const { c } = await knex('products')
+  const db = trx || knex;
+  if (trx) await trx('tenants').where({ id: tenantId }).forUpdate().first();
+  const { c } = await db('products')
     .where({ tenant_id: tenantId, status: PRODUCT_STATUS.ACTIVE })
     .count({ c: '*' })
     .first();

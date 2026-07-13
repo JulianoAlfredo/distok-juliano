@@ -14,8 +14,19 @@ async function createMovement(ctx, input) {
 /** Saldo atual por produto (FR30/FR33), com flag de abaixo do mínimo. */
 async function listBalance(ctx, { belowMin, category, search, page = 1, limit = 50 }) {
   const repo = new TenantScopedRepository(knex, 'stock_balance', ctx);
-  const q = repo.query()
-    .join('products', 'products.id', 'stock_balance.product_id')
+  const base = () => {
+    const q = repo.query()
+      .join('products', 'products.id', 'stock_balance.product_id')
+      .where('products.status', 'active');
+    if (category) q.where('products.category', category);
+    if (search) applySearch(q, search, ['products.name', 'products.sku']);
+    if (belowMin) q.whereRaw('stock_balance.current_stock < products.min_stock');
+    return q;
+  };
+
+  const countRow = await base().count({ c: '*' }).first();
+  const total = Number(countRow ? countRow.c : 0);
+  const rows = await base()
     .select(
       'products.id as product_id',
       'products.name',
@@ -27,14 +38,9 @@ async function listBalance(ctx, { belowMin, category, search, page = 1, limit = 
       'stock_balance.current_stock',
       'stock_balance.last_updated'
     )
-    .where('products.status', 'active');
-  if (category) q.where('products.category', category);
-  if (search) {
-    applySearch(q, search, ['products.name', 'products.sku']);
-  }
-  if (belowMin) q.whereRaw('stock_balance.current_stock < products.min_stock');
-  const rows = await q.orderBy('products.name', 'asc').limit(limit).offset((page - 1) * limit);
-  return rows.map((r) => ({ ...r, below_min: Number(r.current_stock) < Number(r.min_stock) }));
+    .orderBy('products.name', 'asc').limit(limit).offset((page - 1) * limit);
+  const items = rows.map((r) => ({ ...r, below_min: Number(r.current_stock) < Number(r.min_stock) }));
+  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
 /** Extrato de um produto (FR34), cronológico decrescente. */

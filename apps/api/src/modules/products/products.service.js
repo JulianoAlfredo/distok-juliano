@@ -27,13 +27,18 @@ function decorate(p) {
 }
 
 async function list(ctx, { search, category, status, page = 1, limit = 25 }) {
-  const q = repo(ctx).query();
-  if (status) q.where('products.status', status);
-  if (category) q.where('products.category', category);
-  if (search) applySearch(q, search, ['products.name', 'products.sku']);
-  const offset = (page - 1) * limit;
-  const rows = await q.orderBy('products.name', 'asc').limit(limit).offset(offset);
-  return rows.map(decorate);
+  const base = () => {
+    const q = repo(ctx).query();
+    if (status) q.where('products.status', status);
+    if (category) q.where('products.category', category);
+    if (search) applySearch(q, search, ['products.name', 'products.sku']);
+    return q;
+  };
+
+  const countRow = await base().count({ c: '*' }).first();
+  const total = Number(countRow ? countRow.c : 0);
+  const items = await base().orderBy('products.name', 'asc').limit(limit).offset((page - 1) * limit);
+  return { items: items.map(decorate), total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
 async function get(ctx, id) {
@@ -43,7 +48,6 @@ async function get(ctx, id) {
 }
 
 async function create(ctx, data) {
-  await assertCanAddProduct(ctx.tenantId); // FR20
   const id = uuid();
   const row = {
     id,
@@ -57,9 +61,12 @@ async function create(ctx, data) {
     min_stock: data.min_stock ?? 0,
     status: PRODUCT_STATUS.ACTIVE,
   };
-  await repo(ctx).insert(row);
-  // saldo inicial zerado (via repositório escopado — injeta tenant_id)
-  await new TenantScopedRepository(knex, 'stock_balance', ctx).insert({ product_id: id, current_stock: 0 });
+  await knex.transaction(async (trx) => {
+    await assertCanAddProduct(ctx.tenantId, trx); // FR20, com lock contra corrida
+    await repo(ctx).insert(row, trx);
+    // saldo inicial zerado (via repositório escopado — injeta tenant_id)
+    await new TenantScopedRepository(knex, 'stock_balance', ctx).insert({ product_id: id, current_stock: 0 }, trx);
+  });
   await audit.record({ ctx, action: 'product.create', entityType: 'product', entityId: id, after: row, ip: ctx.ip });
   return get(ctx, id);
 }

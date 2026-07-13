@@ -2,6 +2,7 @@
 
 const { AppError } = require('../core/errors');
 const { ERROR_CODES } = require('@distok/shared');
+const sentry = require('../utils/sentry');
 
 /**
  * Handler central de erros (arch §13/§14): resposta padronizada, sem vazar stack.
@@ -36,6 +37,7 @@ function registerErrorHandler(app) {
     }
 
     req.log.error(err);
+    sentry.captureError(err, { url: req.url, method: req.method, tenantId: req.ctx?.tenantId });
     return reply.status(500).send({
       error: { code: 'INTERNAL', message: 'Erro interno' },
     });

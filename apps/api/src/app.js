@@ -4,6 +4,7 @@ const Fastify = require('fastify');
 const env = require('./config/env');
 const knex = require('./db/knex');
 const { registerErrorHandler } = require('./middlewares/error-handler');
+require('./utils/sentry').init();
 
 const path = require('path');
 const fs = require('fs');

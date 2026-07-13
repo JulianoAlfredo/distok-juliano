@@ -9,15 +9,26 @@ const audit = require('../../utils/audit');
 function sessRepo(ctx)  { return new TenantScopedRepository(knex, 'cashier_sessions', ctx); }
 function entRepo(ctx)   { return new TenantScopedRepository(knex, 'cashier_entries', ctx); }
 
+/** Cada operador tem seu próprio caixa "atual" — várias sessões abertas podem coexistir no tenant. */
 async function currentSession(ctx) {
-  return sessRepo(ctx).query().where('cashier_sessions.status', 'open').orderBy('cashier_sessions.opened_at', 'desc').first();
+  return sessRepo(ctx).query()
+    .where({ 'cashier_sessions.status': 'open', 'cashier_sessions.user_id': ctx.userId })
+    .orderBy('cashier_sessions.opened_at', 'desc')
+    .first();
 }
 
 async function openSession(ctx, { openingBalance = 0, notes }) {
-  const existing = await currentSession(ctx);
-  if (existing) throw Errors.conflict('Já existe um caixa aberto. Feche-o antes de abrir um novo.');
   const id = uuid();
-  await sessRepo(ctx).insert({ id, user_id: ctx.userId, opening_balance: openingBalance, notes: notes || null });
+  try {
+    // A constraint única (tenant_id, open_lock) — ver migração — é quem de fato impede
+    // corrida; este insert é a fonte da verdade, não uma checagem prévia.
+    await sessRepo(ctx).insert({ id, user_id: ctx.userId, opening_balance: openingBalance, notes: notes || null });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      throw Errors.conflict('Você já tem um caixa aberto. Feche-o antes de abrir um novo.');
+    }
+    throw err;
+  }
   await audit.record({ ctx, action: 'cashier.open', entityType: 'cashier_session', entityId: id, ip: ctx.ip });
   return getSession(ctx, id);
 }
@@ -29,6 +40,9 @@ async function getSession(ctx, id) {
     .where('cashier_sessions.id', id)
     .first();
   if (!session) throw Errors.notFound('Sessão de caixa não encontrada');
+  if (!ctx.isAdmin && session.user_id !== ctx.userId) {
+    throw Errors.notFound('Sessão de caixa não encontrada');
+  }
   const entries = await entRepo(ctx).query()
     .leftJoin('users', 'users.id', 'cashier_entries.user_id')
     .select('cashier_entries.*', 'users.name as user_name')
@@ -61,6 +75,7 @@ async function addEntry(ctx, sessionId, { type, amount, description }) {
   if (!description || !description.trim()) throw Errors.validation('Informe uma descrição');
   const session = await sessRepo(ctx).findById(sessionId);
   if (!session) throw Errors.notFound('Sessão de caixa não encontrada');
+  if (!ctx.isAdmin && session.user_id !== ctx.userId) throw Errors.notFound('Sessão de caixa não encontrada');
   if (session.status === 'closed') throw Errors.conflict('O caixa está fechado');
   const id = uuid();
   await entRepo(ctx).insert({ id, session_id: sessionId, user_id: ctx.userId, type, amount, description: description.trim() });

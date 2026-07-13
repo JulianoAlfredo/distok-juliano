@@ -56,8 +56,11 @@ export function PurchasesPage() {
     } catch (e: any) { toast.push(e.response?.data?.error?.message || 'Erro ao confirmar.', 'error'); }
   }
 
-  async function doCancel(id: string, num: number) {
-    const ok = await confirm({ title: `Cancelar pedido #${num}?`, message: 'O pedido será marcado como cancelado e o estoque NÃO será alterado.', confirmText: 'Cancelar pedido', danger: true });
+  async function doCancel(id: string, num: number, status: string) {
+    const message = status === 'confirmed'
+      ? 'O pedido será cancelado e a entrada de estoque que ele gerou será estornada (saída equivalente). Isso falha se o produto já foi parcialmente vendido/movimentado desde a confirmação.'
+      : 'O pedido será marcado como cancelado. Como ainda é rascunho, o estoque não foi alterado.';
+    const ok = await confirm({ title: `Cancelar pedido #${num}?`, message, confirmText: 'Cancelar pedido', danger: true });
     if (!ok) return;
     try {
       await api.patch(`/purchases/${id}/cancel`);
@@ -104,8 +107,11 @@ export function PurchasesPage() {
                     {p.status === 'draft' && (
                       <div className="row" style={{ gap: 'var(--sp-2)' }}>
                         <button className="btn btn-sm btn-primary" onClick={() => doConfirm(p.id, p.number)}><IconCheck width={14} height={14} /> Confirmar</button>
-                        <button className="btn btn-sm" onClick={() => doCancel(p.id, p.number)}>Cancelar</button>
+                        <button className="btn btn-sm" onClick={() => doCancel(p.id, p.number, p.status)}>Cancelar</button>
                       </div>
+                    )}
+                    {p.status === 'confirmed' && (
+                      <button className="btn btn-sm" onClick={() => doCancel(p.id, p.number, p.status)}>Estornar</button>
                     )}
                   </td>
                 </tr>
@@ -128,8 +134,10 @@ export function PurchasesPage() {
         footer={detail?.status === 'draft' ? (
           <>
             <button className="btn btn-primary" onClick={() => doConfirm(detail.id, detail.number)}><IconCheck width={16} height={16} /> Confirmar e atualizar estoque</button>
-            <button className="btn" onClick={() => doCancel(detail.id, detail.number)}>Cancelar pedido</button>
+            <button className="btn" onClick={() => doCancel(detail.id, detail.number, detail.status)}>Cancelar pedido</button>
           </>
+        ) : detail?.status === 'confirmed' ? (
+          <button className="btn" onClick={() => doCancel(detail.id, detail.number, detail.status)}>Estornar pedido</button>
         ) : undefined}
       >
         {detail && (
@@ -186,7 +194,7 @@ function PurchaseFormModal({ open, onClose, onSaved }: { open: boolean; onClose:
   useEffect(() => {
     if (productQuery.length < 1) { setProductResults([]); return; }
     const h = setTimeout(() => {
-      api.get('/products', { params: { search: productQuery, status: 'active' } }).then(({ data }) => setProductResults(data.slice(0, 6))).catch(() => {});
+      api.get('/products', { params: { search: productQuery, status: 'active' } }).then(({ data }) => setProductResults((data.items ?? data).slice(0, 6))).catch(() => {});
     }, 250);
     return () => clearTimeout(h);
   }, [productQuery]);

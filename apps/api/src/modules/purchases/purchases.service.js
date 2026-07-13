@@ -6,6 +6,7 @@ const TenantScopedRepository = require('../../core/TenantScopedRepository');
 const StockLedger = require('../../core/StockLedger');
 const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
+const financial = require('../financial/financial.service');
 
 function repo(ctx)        { return new TenantScopedRepository(knex, 'purchases', ctx); }
 function itemsRepo(ctx)   { return new TenantScopedRepository(knex, 'purchase_items', ctx); }
@@ -134,14 +135,58 @@ async function confirm(ctx, id) {
     await productsRepo(ctx).updateById(item.product_id, { cost_price: Math.round(newCost * 100) / 100 });
   }
 
+  // Compra confirmada vira conta a pagar (prazo padrão de 30 dias — ajuste manual no
+  // módulo Financeiro se o fornecedor tiver outro prazo).
+  if (Number(purchase.total_cost) > 0) {
+    const dueDate = new Date(purchase.purchased_at);
+    dueDate.setDate(dueDate.getDate() + 30);
+    await financial.create(ctx, {
+      type:        'payable',
+      description: `Compra #${purchase.number}`,
+      amount:      purchase.total_cost,
+      dueDate:     dueDate.toISOString().slice(0, 10),
+      supplierId:  purchase.supplier_id || undefined,
+      purchaseId:  id,
+    });
+  }
+
   await audit.record({ ctx, action: 'purchase.confirm', entityType: 'purchase', entityId: id, ip: ctx.ip });
   return get(ctx, id);
 }
 
+/**
+ * Cancela um pedido. Se já estava confirmado, estorna a entrada de estoque de cada
+ * item (movimento 'exit' no ledger). Não desfaz o recálculo de custo médio ponderado
+ * feito na confirmação — isso exigiria reconstruir o histórico de custo do produto, o
+ * que não é seguro de fazer se houve outras compras/vendas do mesmo item nesse meio
+ * tempo. O saldo de estoque, esse sim, sempre volta a ser exato.
+ */
 async function cancel(ctx, id) {
-  const purchase = await repo(ctx).findById(id);
-  if (!purchase) throw Errors.notFound('Pedido de compra não encontrado');
-  if (purchase.status === 'confirmed') throw Errors.validation('Pedidos confirmados não podem ser cancelados');
+  const purchase = await get(ctx, id);
+  if (purchase.status === 'cancelled') throw Errors.conflict('Pedido já está cancelado');
+
+  if (purchase.status === 'confirmed') {
+    // valida que todo item tem saldo suficiente pro estorno antes de mexer em qualquer um
+    for (const item of purchase.items) {
+      const bal = await balanceRepo(ctx).query().where('stock_balance.product_id', item.product_id).first();
+      const current = bal ? Number(bal.current_stock) : 0;
+      if (current < item.quantity) {
+        throw Errors.validation(
+          `Não é possível estornar: o produto "${item.product_name}" já teve parte do estoque movimentada (saldo atual ${current}, precisa de ${item.quantity}).`
+        );
+      }
+    }
+    for (const item of purchase.items) {
+      await StockLedger.createMovement(knex, ctx, {
+        productId: item.product_id,
+        type: 'exit',
+        quantity: item.quantity,
+        reason: `Estorno compra #${purchase.number}`,
+      });
+    }
+    await financial.cancelForPurchase(ctx, id);
+  }
+
   await repo(ctx).updateById(id, { status: 'cancelled' });
   await audit.record({ ctx, action: 'purchase.cancel', entityType: 'purchase', entityId: id, ip: ctx.ip });
   return get(ctx, id);

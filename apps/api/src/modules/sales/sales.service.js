@@ -6,10 +6,14 @@ const TenantScopedRepository = require('../../core/TenantScopedRepository');
 const StockLedger = require('../../core/StockLedger');
 const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
+const financial = require('../financial/financial.service');
 
 function repo(ctx)         { return new TenantScopedRepository(knex, 'sales', ctx); }
 function itemsRepo(ctx)    { return new TenantScopedRepository(knex, 'sale_items', ctx); }
 function paymentsRepo(ctx) { return new TenantScopedRepository(knex, 'sale_payments', ctx); }
+
+// Meios de pagamento que não são liquidados na hora — geram conta a receber.
+const DEFERRED_PAYMENT_METHODS = ['boleto', 'cheque'];
 
 async function nextNumber(ctx, trx) {
   const row = await repo(ctx).query(trx).max({ m: 'number' }).first();
@@ -148,6 +152,22 @@ async function create(ctx, { customerId, paymentMethod, payments, notes, discoun
     });
   }
 
+  // Pagamento em boleto/cheque não é dinheiro em caixa na hora — vira conta a receber.
+  for (const p of resolvedPayments) {
+    if (DEFERRED_PAYMENT_METHODS.includes(p.method) && Number(p.amount) > 0) {
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      await financial.create(ctx, {
+        type:        'receivable',
+        description: `Venda #${number}`,
+        amount:      p.amount,
+        dueDate:     dueDate.toISOString().slice(0, 10),
+        customerId:  customerId || undefined,
+        saleId:      id,
+      });
+    }
+  }
+
   await audit.record({ ctx, action: 'sale.create', entityType: 'sale', entityId: id, ip: ctx.ip });
   return get(ctx, id);
 }
@@ -165,6 +185,7 @@ async function cancel(ctx, id) {
     });
   }
 
+  await financial.cancelForSale(ctx, id);
   await repo(ctx).updateById(id, { status: 'cancelled' });
   await audit.record({ ctx, action: 'sale.cancel', entityType: 'sale', entityId: id, ip: ctx.ip });
   return get(ctx, id);

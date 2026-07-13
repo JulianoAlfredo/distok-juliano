@@ -71,7 +71,7 @@ test('FR30: extrato traz flag de abaixo do mínimo no saldo', async () => {
   // saldo atual 50 < min 24? não. Vamos baixar para 10
   await stock.createMovement(ctx, { productId, type: 'adjustment', quantity: 10, reason: 'ajuste teste' });
   const bal = await stock.listBalance(ctx, { belowMin: true });
-  const item = bal.find((b) => b.product_id === productId);
+  const item = bal.items.find((b) => b.product_id === productId);
   assert.ok(item, 'produto deve aparecer no filtro abaixo do mínimo');
   assert.strictEqual(item.below_min, true);
 });

@@ -173,7 +173,12 @@ O `apps/web/public/.htaccess` (incluído no build) faz o **fallback de SPA** do 
 
 - **Atualizações:** `git pull` na pasta do repo → `bash scripts/deploy.sh` → **Restart** do Node app.
 - **Migrations:** sempre versionadas; `npm run migrate` é idempotente (só aplica o que falta).
-- **Backup:** ative o backup do MySQL no hPanel **e** agende um `mysqldump` off-site (RPO alvo ≤ 24h).
+- **Backup:** `scripts/backup-db.sh` faz o `mysqldump` (consistente, comprimido, com rotação local). Agende no hPanel:
+  1. **hPanel → Avançado → Cron Job** → novo job diário (ex.: 3h da manhã).
+  2. Comando: `bash /caminho/do/repo/scripts/backup-db.sh >> /caminho/do/repo/backup.log 2>&1`.
+  3. Por padrão o backup fica só local em `~/distok-backups` (retenção de 14 dias, `BACKUP_RETENTION_DAYS` no `.env` pra mudar). Para RPO ≤ 24h de verdade, isso **não é suficiente sozinho** — defina `BACKUP_OFFSITE_CMD` no `.env` com um comando que copie o arquivo pra fora do servidor (ex.: `rclone copy` pra um storage externo, `scp` pra outra máquina). Sem isso, um problema no próprio servidor Hostinger derruba backup e app juntos.
+  4. Também ative o backup nativo do MySQL no hPanel como camada extra (não substitui o passo acima — é gerenciado pela Hostinger, sem controle de retenção/versionamento seu).
+- **Alerting de erro:** defina `SENTRY_DSN` no `.env` (crie um projeto Node em sentry.io) para receber alerta em erro 500 de produção. Sem essa variável, o app roda normal e só loga localmente, como antes.
 - **Logs:** stdout do Node app (painel do Node.js).
 - **Monitoramento:** aponte um monitor externo (ex.: UptimeRobot) para `/health`.
 - **CI:** o `.github/workflows/ci.yml` roda lint + migrations + testes + build a cada PR/push em `main` — não faz o deploy (isso é manual/Git da Hostinger), mas garante que o que está em `main` é íntegro.

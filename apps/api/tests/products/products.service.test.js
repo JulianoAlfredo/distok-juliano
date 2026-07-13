@@ -48,7 +48,7 @@ test('FR20: limite de produtos do plano bloqueia o 2º', async () => {
 
 test('FR17: inativar produto não deleta (mantém histórico)', async () => {
   const list = await products.list(ctx, {});
-  const id = list[0].id;
+  const id = list.items[0].id;
   const out = await products.inactivate(ctx, id);
   assert.strictEqual(out.status, 'inactive');
   const still = await knex('products').where({ id }).first();
@@ -58,7 +58,15 @@ test('FR17: inativar produto não deleta (mantém histórico)', async () => {
 test('FR18: busca por nome', async () => {
   // após inativar acima, ainda lista por nome (sem filtro de status)
   const res = await products.list(ctx, { search: 'Cerv' });
-  assert.ok(res.some((p) => p.name.includes('Cerveja')));
+  assert.ok(res.items.some((p) => p.name.includes('Cerveja')));
+});
+
+test('paginação: retorna total e páginas', async () => {
+  const res = await products.list(ctx, { page: 1, limit: 1 });
+  assert.strictEqual(res.page, 1);
+  assert.ok(res.total >= 1);
+  assert.ok(res.pages >= 1);
+  assert.ok(res.items.length <= 1);
 });
 
 test('FR25: limite de usuários do plano bloqueia o 2º (admin do tenant conta)', async () => {
