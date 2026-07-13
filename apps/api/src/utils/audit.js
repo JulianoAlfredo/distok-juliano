@@ -28,7 +28,11 @@ async function record({ ctx, action, entityType, entityId, before, after, ip }, 
  */
 async function history(ctx, entityType, entityId, { limit = 50 } = {}) {
   return knex('audit_log')
-    .where({ entity_type: entityType, entity_id: entityId, tenant_id: ctx.tenantId })
+    .where({
+      'audit_log.entity_type': entityType,
+      'audit_log.entity_id': entityId,
+      'audit_log.tenant_id': ctx.tenantId,
+    })
     .orderBy('created_at', 'desc')
     .limit(limit)
     .leftJoin('users', 'users.id', 'audit_log.user_id')

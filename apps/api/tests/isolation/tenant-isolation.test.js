@@ -15,7 +15,7 @@ before(async () => {
   planId = uuid(); tenantA = uuid(); tenantB = uuid(); productA = uuid(); productB = uuid();
 
   await knex('plans').insert({
-    id: planId, code: 'basic', name: 'Básico', price_cents: 7990,
+    id: planId, code: 'iso-' + planId.slice(0, 8), name: 'Básico', price_cents: 7990,
     max_users: 3, max_products: 200, features: JSON.stringify({ csv: false }),
   });
   await knex('tenants').insert([
