@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 148">
+  <rect x="28" y="0" width="64" height="64" rx="14" fill="#2563eb"/>
+  <g transform="translate(28,0)" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M48 23 32 14l-16 9 16 9 16-9Z"/>
+    <path d="M16 23v17l16 9 16-9V23"/>
+    <path d="M32 32v17"/>
+  </g>
+  <text x="60" y="100" text-anchor="middle" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-weight="800" font-size="26" letter-spacing="0.8" fill="#0f172a">DISTOK</text>
+  <text x="60" y="124" text-anchor="middle" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-weight="600" font-size="12" letter-spacing="2" fill="#64748b">GESTAO DE ESTOQUE</text>
+</svg>
