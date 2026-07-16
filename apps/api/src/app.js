@@ -97,9 +97,14 @@ async function buildApp() {
 
   // ---------- Frontend (SPA) servido pelo mesmo app ----------
   // Em produção a API e o front compartilham origem: o build do React
-  // (apps/web/dist) é servido na raiz; /api/v1 e /uploads continuam acima.
+  // é servido na raiz; /api/v1 e /uploads continuam acima.
   // Rotas de navegação do React Router caem no index.html (SPA fallback).
-  const webDist = path.resolve(__dirname, '../../web/dist');
+  // Deploys tipo Hostinger só levam a pasta apps/api pro runtime (sem os
+  // "irmãos" do monorepo), então o build copia o dist pra dentro de
+  // apps/api/dist; em dev local (monorepo completo) cai no fallback abaixo.
+  const webDist = fs.existsSync(path.resolve(__dirname, '../dist'))
+    ? path.resolve(__dirname, '../dist')
+    : path.resolve(__dirname, '../../web/dist');
   if (fs.existsSync(webDist)) {
     await app.register(require('@fastify/static'), {
       root: webDist,

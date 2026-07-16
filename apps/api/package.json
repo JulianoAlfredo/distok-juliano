@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "build": "npm install --prefix ../web && npm run build --prefix ../web",
+    "build": "npm install --prefix ../web && npm run build --prefix ../web && rm -rf dist node_modules && cp -r ../web/dist ./dist && cp -r ../../node_modules ./node_modules && rm -rf ./node_modules/@distok && mkdir -p ./node_modules/@distok/shared && cp -r ../../packages/shared/. ./node_modules/@distok/shared/",
     "migrate": "knex migrate:latest --knexfile src/db/knexfile.js",
     "migrate:test": "cross-env NODE_ENV=test knex migrate:latest --knexfile src/db/knexfile.js",
     "migrate:rollback": "knex migrate:rollback --knexfile src/db/knexfile.js",
