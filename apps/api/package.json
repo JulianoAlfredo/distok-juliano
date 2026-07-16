@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "build": "npm run build --prefix ../web",
+    "build": "npm install --prefix ../web && npm run build --prefix ../web",
     "migrate": "knex migrate:latest --knexfile src/db/knexfile.js",
     "migrate:test": "cross-env NODE_ENV=test knex migrate:latest --knexfile src/db/knexfile.js",
     "migrate:rollback": "knex migrate:rollback --knexfile src/db/knexfile.js",
