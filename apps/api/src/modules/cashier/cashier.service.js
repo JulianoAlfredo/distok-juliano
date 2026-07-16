@@ -22,7 +22,10 @@ async function openSession(ctx, { openingBalance = 0, notes }) {
   try {
     // A constraint única (tenant_id, open_lock) — ver migração — é quem de fato impede
     // corrida; este insert é a fonte da verdade, não uma checagem prévia.
-    await sessRepo(ctx).insert({ id, user_id: ctx.userId, opening_balance: openingBalance, notes: notes || null });
+    await sessRepo(ctx).insert({
+      id, user_id: ctx.userId, opening_balance: openingBalance, notes: notes || null,
+      open_lock: ctx.userId,
+    });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       throw Errors.conflict('Você já tem um caixa aberto. Feche-o antes de abrir um novo.');
@@ -64,6 +67,7 @@ async function closeSession(ctx, id, { notes }) {
     closed_at: knex.fn.now(),
     closing_balance: detail.current_balance,
     notes: notes || session.notes,
+    open_lock: null,
   });
   await audit.record({ ctx, action: 'cashier.close', entityType: 'cashier_session', entityId: id, ip: ctx.ip });
   return getSession(ctx, id);
