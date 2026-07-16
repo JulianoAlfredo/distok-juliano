@@ -9,7 +9,7 @@ import { MoneyInput } from '../../components/ui/MoneyInput';
 import { formatBRL } from '../../lib/format';
 import { IconPlus } from '../../components/ui/icons';
 
-type Entry   = { id: string; type: 'in' | 'out'; amount: number; description: string; created_at: string; user_name: string | null };
+type Entry = { id: string; type: 'in' | 'out'; amount: number; description: string; created_at: string; user_name: string | null };
 type Session = {
   id: string; status: 'open' | 'closed';
   opening_balance: number; closing_balance: number | null; current_balance: number;
@@ -36,10 +36,10 @@ export function CashierPage() {
 // ─── Caixa Atual ──────────────────────────────────────────────────────────────
 
 function CurrentCashier() {
-  const toast   = useToast();
+  const toast = useToast();
   const confirm = useConfirm();
-  const [session, setSession]     = useState<Session | null | undefined>(undefined);
-  const [showOpen,  setShowOpen]  = useState(false);
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [showOpen, setShowOpen] = useState(false);
   const [showEntry, setShowEntry] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [closeSaving, setCloseSaving] = useState(false);
@@ -75,10 +75,10 @@ function CurrentCashier() {
       ) : (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
-            <MetricCard label="Saldo atual"   value={formatBRL(Number(session.current_balance))} highlight />
+            <MetricCard label="Saldo atual" value={formatBRL(Number(session.current_balance))} highlight />
             <MetricCard label="Saldo inicial" value={formatBRL(Number(session.opening_balance))} />
-            <MetricCard label="Entradas"      value={formatBRL(session.total_in)}  color="var(--color-success)" />
-            <MetricCard label="Saídas"        value={formatBRL(session.total_out)} color="var(--color-danger)"  />
+            <MetricCard label="Entradas" value={formatBRL(session.total_in)} color="var(--color-success)" />
+            <MetricCard label="Saídas" value={formatBRL(session.total_out)} color="var(--color-danger)" />
           </div>
 
           <div className="row" style={{ marginBottom: 'var(--sp-5)', gap: 'var(--sp-3)' }}>
@@ -88,6 +88,7 @@ function CurrentCashier() {
 
           <div className="card">
             <h3 style={{ marginBottom: 'var(--sp-4)' }}>Movimentações da sessão</h3>
+            {console.log(session)}
             {session.entries.length === 0 ? (
               <p className="muted" style={{ textAlign: 'center', padding: 'var(--sp-4) 0' }}>Nenhum lançamento ainda.</p>
             ) : (
@@ -159,7 +160,7 @@ function MetricCard({ label, value, highlight, color }: { label: string; value: 
 function OpenModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: (s: Session) => void }) {
   const toast = useToast();
   const [balance, setBalance] = useState(0);
-  const [notes, setNotes]     = useState('');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!open) { setBalance(0); setNotes(''); } }, [open]);
@@ -187,16 +188,16 @@ function OpenModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
 
 function EntryModal({ open, sessionId, onClose, onSaved }: { open: boolean; sessionId: string; onClose: () => void; onSaved: (s: Session) => void }) {
   const toast = useToast();
-  const [type, setType]           = useState<'in' | 'out'>('in');
-  const [amount, setAmount]       = useState(0);
+  const [type, setType] = useState<'in' | 'out'>('in');
+  const [amount, setAmount] = useState(0);
   const [description, setDescription] = useState('');
-  const [loading, setLoading]     = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!open) { setType('in'); setAmount(0); setDescription(''); } }, [open]);
 
   async function submit() {
     if (!description.trim()) return toast.push('Informe a descrição.', 'error');
-    if (amount <= 0)          return toast.push('Valor deve ser maior que zero.', 'error');
+    if (amount <= 0) return toast.push('Valor deve ser maior que zero.', 'error');
     setLoading(true);
     try { const { data } = await api.post(`/cashier/sessions/${sessionId}/entries`, { type, amount, description }); onSaved(data); }
     catch (e: any) { toast.push(e.response?.data?.error?.message || 'Erro ao registrar.', 'error'); }
@@ -214,7 +215,7 @@ function EntryModal({ open, sessionId, onClose, onSaved }: { open: boolean; sess
       <div className="field">
         <FieldLabel required>Tipo</FieldLabel>
         <div className="seg">
-          <button className={`seg-btn${type === 'in'  ? ' active' : ''}`} onClick={() => setType('in')}>Entrada</button>
+          <button className={`seg-btn${type === 'in' ? ' active' : ''}`} onClick={() => setType('in')}>Entrada</button>
           <button className={`seg-btn${type === 'out' ? ' active' : ''}`} onClick={() => setType('out')}>Saída</button>
         </div>
       </div>
@@ -227,10 +228,10 @@ function EntryModal({ open, sessionId, onClose, onSaved }: { open: boolean; sess
 // ─── Histórico ────────────────────────────────────────────────────────────────
 
 function CashierHistory() {
-  const [page, setPage]               = useState<any>({ items: [], total: 0, page: 1, pages: 1 });
+  const [page, setPage] = useState<any>({ items: [], total: 0, page: 1, pages: 1 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading]         = useState(true);
-  const [detail, setDetail]           = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<Session | null>(null);
 
   async function load(p = currentPage) {
     setLoading(true);
@@ -268,7 +269,7 @@ function CashierHistory() {
           </table>
           <div className="pagination">
             <span className="pagination-info">{total} sessão{total !== 1 ? 'ões' : ''} — página {currentPage} de {pages}</span>
-            <button className="btn btn-sm" disabled={currentPage <= 1}    onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
+            <button className="btn btn-sm" disabled={currentPage <= 1} onClick={() => setCurrentPage((p) => p - 1)}>← Anterior</button>
             <button className="btn btn-sm" disabled={currentPage >= pages} onClick={() => setCurrentPage((p) => p + 1)}>Próxima →</button>
           </div>
         </div>

@@ -17,15 +17,21 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, subtitle, size = 'md', children, footer }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // onClose costuma ser uma arrow function inline no chamador (recriada a cada
+  // render do pai). Guardar a versão mais recente numa ref evita que o efeito
+  // abaixo dependa dela — senão ele reroda a cada tecla digitada no formulário
+  // e o setTimeout de foco rouba o cursor do input de volta pro modal.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
     document.addEventListener('keydown', h);
-    // Foca o diálogo ao abrir para leitores de tela
+    // Foca o diálogo ao abrir para leitores de tela (só quando abre de verdade)
     const id = setTimeout(() => dialogRef.current?.focus(), 50);
     return () => { document.removeEventListener('keydown', h); clearTimeout(id); };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

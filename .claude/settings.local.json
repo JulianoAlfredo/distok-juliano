@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:developer.ifood.com.br)",
+      "WebFetch(domain:seller-public-api.ze.delivery)",
+      "WebFetch(domain:blog.connectplug.com.br)"
+    ]
+  }
+}
