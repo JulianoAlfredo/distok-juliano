@@ -69,11 +69,11 @@ export function DashboardPage() {
                 <tbody>
                   {s.lastSales.map((sale) => (
                     <tr key={sale.id}>
-                      <td style={{ fontWeight: 700 }}>#{sale.number}</td>
-                      <td>{sale.customer_name || <span className="muted">Avulso</span>}</td>
-                      <td style={{ fontWeight: 600 }}>{formatBRL(Number(sale.total))}</td>
-                      <td className="muted">{PAYMENT[sale.payment_method] || sale.payment_method}</td>
-                      <td className="muted">{new Date(sale.sold_at).toLocaleDateString('pt-BR')}</td>
+                      <td style={{ fontWeight: 700 }} data-label="#">#{sale.number}</td>
+                      <td data-label="Cliente">{sale.customer_name || <span className="muted">Avulso</span>}</td>
+                      <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(Number(sale.total))}</td>
+                      <td className="muted" data-label="Pagamento">{PAYMENT[sale.payment_method] || sale.payment_method}</td>
+                      <td className="muted" data-label="Data">{new Date(sale.sold_at).toLocaleDateString('pt-BR')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -94,9 +94,9 @@ export function DashboardPage() {
                 <tbody>
                   {s.bestSellers.map((b, i) => (
                     <tr key={b.id}>
-                      <td><span className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, marginRight: 'var(--sp-2)' }}>#{i + 1}</span>{b.name}</td>
-                      <td style={{ fontWeight: 600 }}>{b.qty_sold}</td>
-                      <td>{formatBRL(b.revenue)}</td>
+                      <td data-label="Produto"><span className="muted" style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, marginRight: 'var(--sp-2)' }}>#{i + 1}</span>{b.name}</td>
+                      <td style={{ fontWeight: 600 }} data-label="Qtd vendida">{b.qty_sold}</td>
+                      <td data-label="Receita">{formatBRL(b.revenue)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -121,12 +121,12 @@ export function DashboardPage() {
               <tbody>
                 {s.lastMovements.map((m, i) => (
                   <tr key={i}>
-                    <td className="muted">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
-                    <td style={{ fontWeight: 500 }}>{m.product || '—'}</td>
-                    <td><MovType type={m.type} /></td>
-                    <td>{m.quantity}</td>
-                    <td style={{ fontWeight: 600 }}>{m.balance_after}</td>
-                    <td className="muted">{m.user_name || '—'}</td>
+                    <td className="muted" data-label="Data">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                    <td style={{ fontWeight: 500 }} data-label="Produto">{m.product || '—'}</td>
+                    <td data-label="Tipo"><MovType type={m.type} /></td>
+                    <td data-label="Qtd">{m.quantity}</td>
+                    <td style={{ fontWeight: 600 }} data-label="Saldo">{m.balance_after}</td>
+                    <td className="muted" data-label="Responsável">{m.user_name || '—'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -140,10 +140,10 @@ export function TenantsPage() {
             <tbody>
               {items.map((t) => (
                 <tr key={t.id}>
-                  <td><div style={{ fontWeight: 600 }}>{t.name}</div><div className="faint" style={{ fontSize: 'var(--fs-xs)' }}>{t.slug}</div></td>
-                  <td className="muted">{t.cnpj}</td>
-                  <td><span className="badge badge-neutral">{t.plan_name}</span></td>
-                  <td><StatusBadge status={t.status} /></td>
+                  <td data-label="Empresa"><div style={{ fontWeight: 600 }}>{t.name}</div><div className="faint" style={{ fontSize: 'var(--fs-xs)' }}>{t.slug}</div></td>
+                  <td className="muted" data-label="CNPJ">{t.cnpj}</td>
+                  <td data-label="Plano"><span className="badge badge-neutral">{t.plan_name}</span></td>
+                  <td data-label="Situação"><StatusBadge status={t.status} /></td>
                   <td>
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
                       {t.status === 'active'

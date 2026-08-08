@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -13,7 +13,7 @@ import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { formatBRL } from '../../lib/format';
-import { IconBox, IconPlus, IconSearch, IconHistory } from '../../components/ui/icons';
+import { IconBox, IconPlus, IconSearch, IconHistory, IconDots } from '../../components/ui/icons';
 
 type CatalogItem = { id: string; name: string; symbol?: string };
 type Product = {
@@ -24,6 +24,40 @@ type Product = {
 type Page = { items: Product[]; total: number; page: number; pages: number };
 const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0, ze_delivery_item_id: '', ze_delivery_sync_enabled: false };
 const ACTION_LABEL: Record<string, string> = { 'product.create': 'Cadastro', 'product.update': 'Edição', 'product.inactivate': 'Inativação' };
+
+/** Ações da linha num menu "⋮" — menos botões brigando por espaço, principalmente no cartão mobile. */
+function RowActionsMenu({ product, onEdit, onInactivate, onHistory }: {
+  product: Product; onEdit: () => void; onInactivate: () => void; onHistory: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className="btn btn-sm btn-ghost" aria-label={`Mais ações — ${product.name}`} onClick={() => setOpen((v) => !v)}>
+        <IconDots width={16} height={16} />
+      </button>
+      {open && (
+        <div className="row-actions-menu" role="menu">
+          <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onEdit(); }}>Editar</button>
+          {product.status === 'active' && (
+            <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onInactivate(); }}>Inativar</button>
+          )}
+          <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onHistory(); }}>
+            <IconHistory width={15} height={15} /> Histórico
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProductsPage() {
   const { t } = useTheme();
@@ -155,25 +189,33 @@ export function ProductsPage() {
           <table className="table">
             <thead><tr>
               <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
-              <th>Nome</th><th>Código</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Zé</th><th>Situação</th><th></th></tr></thead>
+              <th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th><th>Zé Delivery</th><th></th></tr></thead>
             <tbody>
               {page.items.map((p) => (
                 <tr key={p.id}>
                   <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${p.name}`} checked={bulk.isSelected(p.id)} onChange={() => bulk.toggle(p.id)} /></td>
-                  <td style={{ fontWeight: 500 }}>{p.name}</td>
-                  <td className="muted">{p.sku || '—'}</td>
-                  <td className="muted">{p.category || '—'}</td>
-                  <td>{formatBRL(Number(p.cost_price))}</td>
-                  <td>{formatBRL(Number(p.sale_price))}</td>
-                  <td>{p.margin == null ? '—' : `${p.margin}%`}</td>
-                  <td>{p.ze_delivery_sync_enabled ? <span className="badge badge-success">sync</span> : p.ze_delivery_item_id ? <span className="badge">vinculado</span> : '—'}</td>
-                  <td><StatusBadge status={p.status} /></td>
-                  <td>
-                    <div className="row" style={{ gap: 'var(--sp-2)' }}>
-                      <button className="btn btn-sm" onClick={() => startEdit(p)}>Editar</button>
-                      {p.status === 'active' && <button className="btn btn-sm" onClick={() => inactivate(p)}>Inativar</button>}
-                      <button className="btn btn-sm btn-ghost" title="Histórico" aria-label="Ver histórico" onClick={() => openHistory(p)}><IconHistory width={15} height={15} /></button>
+                  <td className="product-cell-td">
+                    <div className="product-cell">
+                      <span style={{ fontWeight: 600 }}>{p.name}</span>
+                      <StatusBadge status={p.status} />
                     </div>
+                  </td>
+                  <td className="muted" data-label="Código">{p.sku || '—'}</td>
+                  <td className="muted" data-label="Categoria">{p.category || '—'}</td>
+                  <td data-label="Preço">
+                    {formatBRL(Number(p.cost_price))} → {formatBRL(Number(p.sale_price))}
+                    {p.margin != null && <span className="muted"> ({p.margin}%)</span>}
+                  </td>
+                  <td data-label="Zé Delivery">
+                    {p.ze_delivery_sync_enabled ? <span className="badge badge-success">sync</span> : p.ze_delivery_item_id ? <span className="badge">vinculado</span> : '—'}
+                  </td>
+                  <td>
+                    <RowActionsMenu
+                      product={p}
+                      onEdit={() => startEdit(p)}
+                      onInactivate={() => inactivate(p)}
+                      onHistory={() => openHistory(p)}
+                    />
                   </td>
                 </tr>
               ))}

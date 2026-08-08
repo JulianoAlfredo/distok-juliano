@@ -89,12 +89,12 @@ export function SalesPage() {
             <tbody>
               {items.map((s) => (
                 <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(s.id)}>
-                  <td style={{ fontWeight: 700 }}>#{s.number}</td>
-                  <td>{s.customer_name || <span className="muted">Avulsa</span>}</td>
-                  <td className="muted">{paymentLabel(s.payment_method)}</td>
-                  <td style={{ fontWeight: 600 }}>{formatBRL(Number(s.total))}</td>
-                  <td className="muted">{new Date(s.sold_at).toLocaleDateString('pt-BR')}</td>
-                  <td><span className={`badge ${STATUS_BADGE[s.status]}`}>{STATUS_LABEL[s.status]}</span></td>
+                  <td style={{ fontWeight: 700 }} data-label="#">#{s.number}</td>
+                  <td data-label="Cliente">{s.customer_name || <span className="muted">Avulsa</span>}</td>
+                  <td className="muted" data-label="Pagamento">{paymentLabel(s.payment_method)}</td>
+                  <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(Number(s.total))}</td>
+                  <td className="muted" data-label="Data">{new Date(s.sold_at).toLocaleDateString('pt-BR')}</td>
+                  <td data-label="Situação"><span className={`badge ${STATUS_BADGE[s.status]}`}>{STATUS_LABEL[s.status]}</span></td>
                   <td onClick={(e) => e.stopPropagation()}>
                     {s.status === 'open' && <button className="btn btn-sm" onClick={() => doCancel(s.id, s.number)}>Cancelar</button>}
                   </td>
@@ -144,11 +144,11 @@ export function SalesPage() {
                 <tbody>
                   {detail.items.map((it: any) => (
                     <tr key={it.id}>
-                      <td>{it.product_name}</td>
-                      <td>{it.quantity} {it.unit}</td>
-                      <td>{formatBRL(Number(it.unit_price))}</td>
-                      <td className="muted">{Number(it.discount) > 0 ? formatBRL(Number(it.discount)) : '—'}</td>
-                      <td style={{ fontWeight: 600 }}>{formatBRL(Number(it.total))}</td>
+                      <td data-label="Produto">{it.product_name}</td>
+                      <td data-label="Qtd">{it.quantity} {it.unit}</td>
+                      <td data-label="Preço unit.">{formatBRL(Number(it.unit_price))}</td>
+                      <td className="muted" data-label="Desconto">{Number(it.discount) > 0 ? formatBRL(Number(it.discount)) : '—'}</td>
+                      <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(Number(it.total))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -376,14 +376,14 @@ function SaleFormModal({ open, onClose, onSaved }: { open: boolean; onClose: () 
                   const itTotal = it.quantity * it.unitPrice - it.discount;
                   return (
                     <tr key={it.productId}>
-                      <td style={{ fontWeight: 500 }}>{it.productName} <span className="muted" style={{ fontWeight: 400 }}>({it.unit})</span></td>
-                      <td style={{ width: 100 }}>
+                      <td style={{ fontWeight: 500 }} data-label="Produto">{it.productName} <span className="muted" style={{ fontWeight: 400 }}>({it.unit})</span></td>
+                      <td style={{ width: 100 }} data-label="Qtd">
                         <input className="input" type="number" min={1} value={it.quantity} style={{ textAlign: 'center' }}
                           onChange={(e) => updateCart(idx, 'quantity', Number(e.target.value))} />
                       </td>
-                      <td style={{ width: 140 }}><MoneyInput value={it.unitPrice} onChange={(v) => updateCart(idx, 'unitPrice', v)} /></td>
-                      <td style={{ width: 130 }}><MoneyInput value={it.discount}  onChange={(v) => updateCart(idx, 'discount', v)}  /></td>
-                      <td style={{ fontWeight: 600 }}>{formatBRL(Math.max(0, itTotal))}</td>
+                      <td style={{ width: 140 }} data-label="Preço unit."><MoneyInput value={it.unitPrice} onChange={(v) => updateCart(idx, 'unitPrice', v)} /></td>
+                      <td style={{ width: 130 }} data-label="Desconto"><MoneyInput value={it.discount}  onChange={(v) => updateCart(idx, 'discount', v)}  /></td>
+                      <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(Math.max(0, itTotal))}</td>
                       <td style={{ width: 40 }}>
                         <button className="btn btn-sm btn-ghost" aria-label="Remover do carrinho" onClick={() => setCart((c) => c.filter((_, i) => i !== idx))}><IconClose width={15} height={15} /></button>
                       </td>

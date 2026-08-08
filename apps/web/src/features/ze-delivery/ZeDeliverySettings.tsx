@@ -230,11 +230,11 @@ export function ZeDeliverySettings() {
                     <tbody>
                       {statusPanel.recentMovements.map((m) => (
                         <tr key={m.id}>
-                          <td>{m.product_name}</td>
-                          <td>{m.type}</td>
-                          <td>{m.quantity}</td>
-                          <td className="muted">{m.source === 'ze_delivery_import' ? 'importação' : 'pedido'}</td>
-                          <td className="muted">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                          <td data-label="Produto">{m.product_name}</td>
+                          <td data-label="Tipo">{m.type}</td>
+                          <td data-label="Qtd">{m.quantity}</td>
+                          <td className="muted" data-label="Origem">{m.source === 'ze_delivery_import' ? 'importação' : 'pedido'}</td>
+                          <td className="muted" data-label="Data">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -306,10 +306,10 @@ export function ZeDeliverySettings() {
               <tbody>
                 {orders.items.map((o) => (
                   <tr key={o.id}>
-                    <td>{o.order_number}</td>
-                    <td><span className="badge">{o.status}</span></td>
-                    <td>{o.total_value != null ? formatBRL(Number(o.total_value)) : '—'}</td>
-                    <td className="muted">{new Date(o.created_at).toLocaleString('pt-BR')}</td>
+                    <td data-label="Pedido">{o.order_number}</td>
+                    <td data-label="Status"><span className="badge">{o.status}</span></td>
+                    <td data-label="Valor">{o.total_value != null ? formatBRL(Number(o.total_value)) : '—'}</td>
+                    <td className="muted" data-label="Data">{new Date(o.created_at).toLocaleString('pt-BR')}</td>
                   </tr>
                 ))}
               </tbody>

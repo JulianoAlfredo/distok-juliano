@@ -109,13 +109,13 @@ function EntryList() {
                 const overdue = e.status === 'pending' && new Date(e.due_date) < new Date();
                 return (
                   <tr key={e.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(e)}>
-                    <td style={{ color: overdue ? 'var(--color-danger)' : undefined, fontWeight: overdue ? 600 : undefined }}>
+                    <td style={{ color: overdue ? 'var(--color-danger)' : undefined, fontWeight: overdue ? 600 : undefined }} data-label="Vencimento">
                       {new Date(e.due_date + 'T12:00:00').toLocaleDateString('pt-BR')}{overdue && ' ⚠'}
                     </td>
-                    <td style={{ fontWeight: 500 }}>{e.description}</td>
-                    <td className="muted">{TYPE_LABEL[e.type]}</td>
-                    <td style={{ fontWeight: 600 }}>{formatBRL(Number(e.amount))}</td>
-                    <td><span className={`badge ${STATUS_BADGE[e.status]}`}>{STATUS_LABEL[e.status]}</span></td>
+                    <td style={{ fontWeight: 500 }} data-label="Descrição">{e.description}</td>
+                    <td className="muted" data-label="Tipo">{TYPE_LABEL[e.type]}</td>
+                    <td style={{ fontWeight: 600 }} data-label="Valor">{formatBRL(Number(e.amount))}</td>
+                    <td data-label="Situação"><span className={`badge ${STATUS_BADGE[e.status]}`}>{STATUS_LABEL[e.status]}</span></td>
                     <td onClick={(ev) => ev.stopPropagation()}>
                       {e.status === 'pending' && (
                         <div className="row" style={{ gap: 'var(--sp-2)' }}>

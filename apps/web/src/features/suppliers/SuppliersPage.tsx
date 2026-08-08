@@ -151,18 +151,18 @@ export function SuppliersPage() {
               {items.map((s) => (
                 <tr key={s.id}>
                   <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${s.name}`} checked={bulk.isSelected(s.id)} onChange={() => bulk.toggle(s.id)} /></td>
-                  <td>
+                  <td data-label="Nome / Fantasia">
                     <div style={{ fontWeight: 500 }}>{s.name}</div>
                     {s.trade_name && <div className="muted" style={{ fontSize: 'var(--fs-xs)' }}>{s.trade_name}</div>}
                   </td>
-                  <td className="muted">{s.cnpj || s.cpf || '—'}</td>
-                  <td className="muted">
+                  <td className="muted" data-label="CNPJ / CPF">{s.cnpj || s.cpf || '—'}</td>
+                  <td className="muted" data-label="Contato">
                     {s.contact && <div>{s.contact}</div>}
                     {s.phone   && <div style={{ fontSize: 'var(--fs-xs)' }}>{s.phone}</div>}
                     {!s.contact && !s.phone && '—'}
                   </td>
-                  <td className="muted">{[s.city, s.state].filter(Boolean).join(' / ') || '—'}</td>
-                  <td><StatusBadge status={s.status} /></td>
+                  <td className="muted" data-label="Cidade / UF">{[s.city, s.state].filter(Boolean).join(' / ') || '—'}</td>
+                  <td data-label="Situação"><StatusBadge status={s.status} /></td>
                   <td>
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
                       <button className="btn btn-sm" onClick={() => startEdit(s)}>Editar</button>

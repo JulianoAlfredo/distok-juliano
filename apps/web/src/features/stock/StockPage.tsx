@@ -201,11 +201,11 @@ function BalanceList({ onLaunch }: { onLaunch: () => void }) {
             <tbody>
               {items.map((b) => (
                 <tr key={b.product_id} style={{ cursor: 'pointer' }} onClick={() => openExtract(b.product_id)}>
-                  <td style={{ fontWeight: 500 }}>{b.name}</td>
-                  <td className="muted">{b.sku || '—'}</td>
-                  <td style={{ fontWeight: 700 }}>{b.current_stock}</td>
-                  <td className="muted">{b.min_stock}</td>
-                  <td><StatusBadge status={b.below_min ? (b.current_stock === 0 ? 'zero' : 'low') : 'ok'} /></td>
+                  <td style={{ fontWeight: 500 }} data-label="Produto">{b.name}</td>
+                  <td className="muted" data-label="SKU">{b.sku || '—'}</td>
+                  <td style={{ fontWeight: 700 }} data-label="Saldo">{b.current_stock}</td>
+                  <td className="muted" data-label="Mínimo">{b.min_stock}</td>
+                  <td data-label="Status"><StatusBadge status={b.below_min ? (b.current_stock === 0 ? 'zero' : 'low') : 'ok'} /></td>
                 </tr>
               ))}
             </tbody>
@@ -226,12 +226,12 @@ function BalanceList({ onLaunch }: { onLaunch: () => void }) {
               <tbody>
                 {extract.movements.map((m: any) => (
                   <tr key={m.id}>
-                    <td className="muted">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
-                    <td>{m.type === 'entry' ? <span className="badge badge-success">Entrada</span> : m.type === 'exit' ? <span className="badge badge-danger">Saída</span> : <span className="badge badge-info">Ajuste</span>}</td>
-                    <td>{m.quantity}</td>
-                    <td style={{ fontWeight: 600 }}>{m.balance_after}</td>
-                    <td className="muted">{m.user_name || '—'}</td>
-                    <td className="muted">{m.reason || '—'}</td>
+                    <td className="muted" data-label="Data">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                    <td data-label="Tipo">{m.type === 'entry' ? <span className="badge badge-success">Entrada</span> : m.type === 'exit' ? <span className="badge badge-danger">Saída</span> : <span className="badge badge-info">Ajuste</span>}</td>
+                    <td data-label="Qtd">{m.quantity}</td>
+                    <td style={{ fontWeight: 600 }} data-label="Saldo">{m.balance_after}</td>
+                    <td className="muted" data-label="Responsável">{m.user_name || '—'}</td>
+                    <td className="muted" data-label="Motivo">{m.reason || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -291,17 +291,17 @@ function MovementHistory() {
             <tbody>
               {items.map((m: any) => (
                 <tr key={m.id}>
-                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(m.created_at).toLocaleString('pt-BR')}</td>
-                  <td style={{ fontWeight: 500 }}>{m.product_name || '—'}</td>
-                  <td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }} data-label="Data">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                  <td style={{ fontWeight: 500 }} data-label="Produto">{m.product_name || '—'}</td>
+                  <td data-label="Tipo">
                     {m.type === 'entry'      && <span className="badge badge-success">Entrada</span>}
                     {m.type === 'exit'       && <span className="badge badge-danger">Saída</span>}
                     {m.type === 'adjustment' && <span className="badge badge-info">Ajuste</span>}
                   </td>
-                  <td style={{ fontWeight: 600 }}>{m.quantity}</td>
-                  <td>{m.balance_after}</td>
-                  <td className="muted">{m.user_name || '—'}</td>
-                  <td className="muted">{m.reason || m.note || '—'}</td>
+                  <td style={{ fontWeight: 600 }} data-label="Qtd">{m.quantity}</td>
+                  <td data-label="Saldo">{m.balance_after}</td>
+                  <td className="muted" data-label="Responsável">{m.user_name || '—'}</td>
+                  <td className="muted" data-label="Motivo">{m.reason || m.note || '—'}</td>
                 </tr>
               ))}
             </tbody>

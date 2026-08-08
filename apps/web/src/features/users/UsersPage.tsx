@@ -78,11 +78,11 @@ export function UsersPage() {
             <tbody>
               {items.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ fontWeight: 500 }}>{u.name}</td>
-                  <td className="muted">{u.email}</td>
-                  <td className="muted">{u.role_title || '—'}</td>
-                  <td><span className={`badge ${u.role === 'admin' ? 'badge-info' : 'badge-neutral'}`}>{u.role === 'admin' ? 'Administrador' : 'Operador'}</span></td>
-                  <td><StatusBadge status={u.status} /></td>
+                  <td style={{ fontWeight: 500 }} data-label="Nome">{u.name}</td>
+                  <td className="muted" data-label="E-mail">{u.email}</td>
+                  <td className="muted" data-label="Cargo">{u.role_title || '—'}</td>
+                  <td data-label="Acesso"><span className={`badge ${u.role === 'admin' ? 'badge-info' : 'badge-neutral'}`}>{u.role === 'admin' ? 'Administrador' : 'Operador'}</span></td>
+                  <td data-label="Situação"><StatusBadge status={u.status} /></td>
                   <td><button className="btn btn-sm" onClick={() => toggleStatus(u)}>{u.status === 'active' ? 'Tirar acesso' : 'Reativar'}</button></td>
                 </tr>
               ))}

@@ -154,15 +154,15 @@ export function CustomersPage() {
               {items.map((c) => (
                 <tr key={c.id}>
                   <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${c.name}`} checked={bulk.isSelected(c.id)} onChange={() => bulk.toggle(c.id)} /></td>
-                  <td style={{ fontWeight: 500 }}>{c.name}</td>
-                  <td className="muted">
+                  <td style={{ fontWeight: 500 }} data-label="Nome">{c.name}</td>
+                  <td className="muted" data-label="Contato">
                     {c.phone && <div>{c.phone}</div>}
                     {c.email && <div style={{ fontSize: 'var(--fs-xs)' }}>{c.email}</div>}
                     {!c.phone && !c.email && '—'}
                   </td>
-                  <td className="muted">{c.cpf || c.cnpj || '—'}</td>
-                  <td className="muted">{[c.city, c.state].filter(Boolean).join(' / ') || '—'}</td>
-                  <td><StatusBadge status={c.status} /></td>
+                  <td className="muted" data-label="CPF / CNPJ">{c.cpf || c.cnpj || '—'}</td>
+                  <td className="muted" data-label="Cidade / UF">{[c.city, c.state].filter(Boolean).join(' / ') || '—'}</td>
+                  <td data-label="Situação"><StatusBadge status={c.status} /></td>
                   <td>
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
                       <button className="btn btn-sm" onClick={() => startEdit(c)}>Editar</button>

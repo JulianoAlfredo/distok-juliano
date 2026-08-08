@@ -92,3 +92,9 @@ export const IconAlertTriangle = (p: P) => (
 export const IconPrinter = (p: P) => (
   <svg {...base(p)}><path d="M6 9V3h12v6" /><rect x="4" y="9" width="16" height="8" rx="1.5" /><path d="M6 14h12v7H6z" /></svg>
 );
+export const IconChevronDown = (p: P) => (
+  <svg {...base(p)}><path d="m6 9 6 6 6-6" /></svg>
+);
+export const IconDots = (p: P) => (
+  <svg {...base(p)}><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" /></svg>
+);

@@ -222,6 +222,21 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .table-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 .table-wrap .table thead th:first-child { border-top-left-radius: var(--radius-lg); }
 
+/* Célula composta (ex.: nome + situação numa coluna só) — usada em Produtos pra reduzir colunas */
+.product-cell { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+
+/* Menu de ações "⋮" por linha — reaproveita .user-menu-item (definido em AppShell) pros itens */
+.row-actions-menu {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  min-width: 170px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: hidden;
+}
+
 /* ---------- Page header ---------- */
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; margin-bottom: var(--sp-6); }
 .page-head h1 { font-size: var(--fs-xl); }
@@ -573,6 +588,75 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   .modal-backdrop { align-items: flex-end; padding: 0; }
   .modal { border-radius: var(--radius-xl) var(--radius-xl) 0 0; max-height: 95vh; animation: modal-slide-up var(--t); }
   @keyframes modal-slide-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+}
+
+/* ---------- Itens de menu dropdown (genérico — usado pelo menu de usuário e por menus de linha "⋮") ---------- */
+.user-menu-item { display: flex; align-items: center; gap: var(--sp-3); width: 100%; padding: var(--sp-3) var(--sp-4); border: none; background: transparent; color: var(--color-text); text-decoration: none; font-size: var(--fs-sm); font-weight: 500; cursor: pointer; text-align: left; transition: background var(--t-fast); }
+.user-menu-item:hover { background: var(--color-surface-2); }
+.user-menu-danger { color: var(--color-danger); }
+
+.row-actions-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; min-width: 170px;
+  background: var(--color-surface); border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 60; overflow: hidden;
+}
+
+/* ---------- Célula "Produto" (Produtos) — nome + situação em destaque no cartão mobile ---------- */
+.product-cell { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .product-cell-td { font-size: var(--fs-md); padding-bottom: var(--sp-3) !important; margin-bottom: 4px; border-bottom: 1px solid var(--color-border); }
+}
+
+/* ---------- Barra de navegação inferior (mobile, <640px) ---------- */
+.bottom-nav { display: none; }
+@media (max-width: 640px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding: 4px var(--sp-2) calc(4px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+  }
+  .bottom-nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; padding: 6px 2px; min-height: 48px;
+    color: var(--color-text-mut); text-decoration: none; font-size: 10px; font-weight: 600;
+    border: none; background: none; cursor: pointer; border-radius: var(--radius-sm);
+  }
+  .bottom-nav-item.active { color: var(--color-primary); }
+  .bottom-nav-ico svg { width: 22px; height: 22px; }
+}
+
+/* ---------- Tabelas responsivas (mobile, <640px): linha vira cartão ---------- */
+@media (max-width: 640px) {
+  .table-wrap { overflow-x: visible; }
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table {
+    border-collapse: separate; border-spacing: 0 var(--sp-3);
+  }
+  .table tr {
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+    padding: var(--sp-2) var(--sp-3); box-shadow: var(--shadow-xs); background: var(--color-surface);
+  }
+  .table td {
+    border: none; padding: 6px 0;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+    font-size: var(--fs-sm);
+  }
+  .table td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600; color: var(--color-text-mut); font-size: var(--fs-xs);
+    flex: none;
+  }
+  .table td:not([data-label]) { justify-content: flex-start; }
+  .table td.bulk-col { display: none; } /* seleção em massa não faz sentido no cartão mobile */
+}
+
+/* ---------- Alertas/menu de usuário: não estourar a tela em phones estreitos ---------- */
+@media (max-width: 420px) {
+  .alert-dropdown, .user-menu-dropdown { width: calc(100vw - 24px); right: -8px; }
 }
 
 /* ---------- Recibo de venda (impressão) ---------- */

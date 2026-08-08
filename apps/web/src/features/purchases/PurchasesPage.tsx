@@ -98,11 +98,11 @@ export function PurchasesPage() {
             <tbody>
               {items.map((p) => (
                 <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(p.id)}>
-                  <td style={{ fontWeight: 700 }}>#{p.number}</td>
-                  <td>{p.supplier_name || <span className="muted">Sem fornecedor</span>}</td>
-                  <td style={{ fontWeight: 600 }}>{formatBRL(Number(p.total_cost))}</td>
-                  <td className="muted">{new Date(p.purchased_at).toLocaleDateString('pt-BR')}</td>
-                  <td><span className={`badge ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span></td>
+                  <td style={{ fontWeight: 700 }} data-label="#">#{p.number}</td>
+                  <td data-label="Fornecedor">{p.supplier_name || <span className="muted">Sem fornecedor</span>}</td>
+                  <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(Number(p.total_cost))}</td>
+                  <td className="muted" data-label="Data">{new Date(p.purchased_at).toLocaleDateString('pt-BR')}</td>
+                  <td data-label="Situação"><span className={`badge ${STATUS_BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span></td>
                   <td onClick={(e) => e.stopPropagation()}>
                     {p.status === 'draft' && (
                       <div className="row" style={{ gap: 'var(--sp-2)' }}>
@@ -155,10 +155,10 @@ export function PurchasesPage() {
                 <tbody>
                   {detail.items.map((it: any) => (
                     <tr key={it.id}>
-                      <td>{it.product_name}</td>
-                      <td>{it.quantity} {it.unit}</td>
-                      <td>{formatBRL(Number(it.unit_cost))}</td>
-                      <td style={{ fontWeight: 600 }}>{formatBRL(Number(it.total_cost))}</td>
+                      <td data-label="Produto">{it.product_name}</td>
+                      <td data-label="Qtd">{it.quantity} {it.unit}</td>
+                      <td data-label="Custo unit.">{formatBRL(Number(it.unit_cost))}</td>
+                      <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(Number(it.total_cost))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -280,15 +280,15 @@ function PurchaseFormModal({ open, onClose, onSaved }: { open: boolean; onClose:
             <tbody>
               {items.map((it, idx) => (
                 <tr key={it.productId}>
-                  <td style={{ fontWeight: 500 }}>{it.productName} <span className="muted" style={{ fontWeight: 400 }}>({it.unit})</span></td>
-                  <td style={{ width: 110 }}>
+                  <td style={{ fontWeight: 500 }} data-label="Produto">{it.productName} <span className="muted" style={{ fontWeight: 400 }}>({it.unit})</span></td>
+                  <td style={{ width: 110 }} data-label="Qtd">
                     <input className="input" type="number" min={1} value={it.quantity} style={{ textAlign: 'center' }}
                       onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))} />
                   </td>
-                  <td style={{ width: 150 }}>
+                  <td style={{ width: 150 }} data-label="Custo unit.">
                     <MoneyInput value={it.unitCost} onChange={(v) => updateItem(idx, 'unitCost', v)} />
                   </td>
-                  <td style={{ fontWeight: 600 }}>{formatBRL(it.quantity * it.unitCost)}</td>
+                  <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(it.quantity * it.unitCost)}</td>
                   <td style={{ width: 40 }}>
                     <button className="btn btn-sm btn-ghost" aria-label="Remover item" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}><IconClose width={15} height={15} /></button>
                   </td>

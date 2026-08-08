@@ -86,7 +86,7 @@ function CategoriesPanel() {
             <tbody>
               {items.map((c) => (
                 <tr key={c.id}>
-                  <td style={{ fontWeight: 500 }}>{c.name}</td>
+                  <td style={{ fontWeight: 500 }} data-label="Categoria">{c.name}</td>
                   <td style={{ width: 50 }}>
                     <button className="btn btn-sm btn-ghost" title="Remover" aria-label="Remover" onClick={() => remove(c)}>
                       <IconClose width={15} height={15} />
@@ -181,8 +181,8 @@ function UnitsPanel() {
             <tbody>
               {items.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ fontWeight: 500 }}>{u.name}</td>
-                  <td><span className="badge badge-neutral">{u.symbol}</span></td>
+                  <td style={{ fontWeight: 500 }} data-label="Nome">{u.name}</td>
+                  <td data-label="Símbolo"><span className="badge badge-neutral">{u.symbol}</span></td>
                   <td style={{ width: 50 }}>
                     <button className="btn btn-sm btn-ghost" title="Remover" aria-label="Remover" onClick={() => remove(u)}>
                       <IconClose width={15} height={15} />

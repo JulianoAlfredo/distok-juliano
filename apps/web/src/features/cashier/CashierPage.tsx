@@ -98,13 +98,13 @@ function CurrentCashier() {
                   <tbody>
                     {session.entries.map((e) => (
                       <tr key={e.id}>
-                        <td className="muted">{new Date(e.created_at).toLocaleTimeString('pt-BR')}</td>
-                        <td>{e.description}</td>
-                        <td>{e.type === 'in' ? <span className="badge badge-success">Entrada</span> : <span className="badge badge-danger">Saída</span>}</td>
-                        <td style={{ fontWeight: 600, color: e.type === 'in' ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        <td className="muted" data-label="Hora">{new Date(e.created_at).toLocaleTimeString('pt-BR')}</td>
+                        <td data-label="Descrição">{e.description}</td>
+                        <td data-label="Tipo">{e.type === 'in' ? <span className="badge badge-success">Entrada</span> : <span className="badge badge-danger">Saída</span>}</td>
+                        <td style={{ fontWeight: 600, color: e.type === 'in' ? 'var(--color-success)' : 'var(--color-danger)' }} data-label="Valor">
                           {e.type === 'in' ? '+' : '-'}{formatBRL(Number(e.amount))}
                         </td>
-                        <td className="muted">{e.user_name || '—'}</td>
+                        <td className="muted" data-label="Responsável">{e.user_name || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -257,12 +257,12 @@ function CashierHistory() {
             <tbody>
               {items.map((s: any) => (
                 <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(s.id)}>
-                  <td>{new Date(s.opened_at).toLocaleString('pt-BR')}</td>
-                  <td className="muted">{s.closed_at ? new Date(s.closed_at).toLocaleString('pt-BR') : '—'}</td>
-                  <td>{formatBRL(Number(s.opening_balance))}</td>
-                  <td style={{ fontWeight: 600 }}>{s.closing_balance != null ? formatBRL(Number(s.closing_balance)) : '—'}</td>
-                  <td>{s.status === 'open' ? <span className="badge badge-success">Aberto</span> : <span className="badge badge-neutral">Fechado</span>}</td>
-                  <td className="muted">{s.user_name || '—'}</td>
+                  <td data-label="Abertura">{new Date(s.opened_at).toLocaleString('pt-BR')}</td>
+                  <td className="muted" data-label="Fechamento">{s.closed_at ? new Date(s.closed_at).toLocaleString('pt-BR') : '—'}</td>
+                  <td data-label="Saldo inicial">{formatBRL(Number(s.opening_balance))}</td>
+                  <td style={{ fontWeight: 600 }} data-label="Saldo final">{s.closing_balance != null ? formatBRL(Number(s.closing_balance)) : '—'}</td>
+                  <td data-label="Situação">{s.status === 'open' ? <span className="badge badge-success">Aberto</span> : <span className="badge badge-neutral">Fechado</span>}</td>
+                  <td className="muted" data-label="Responsável">{s.user_name || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -297,10 +297,10 @@ function CashierHistory() {
                   <tbody>
                     {detail.entries.map((e) => (
                       <tr key={e.id}>
-                        <td className="muted">{new Date(e.created_at).toLocaleTimeString('pt-BR')}</td>
-                        <td>{e.description}</td>
-                        <td>{e.type === 'in' ? <span className="badge badge-success">Entrada</span> : <span className="badge badge-danger">Saída</span>}</td>
-                        <td style={{ fontWeight: 600, color: e.type === 'in' ? 'var(--color-success)' : 'var(--color-danger)' }}>{e.type === 'in' ? '+' : '-'}{formatBRL(Number(e.amount))}</td>
+                        <td className="muted" data-label="Hora">{new Date(e.created_at).toLocaleTimeString('pt-BR')}</td>
+                        <td data-label="Descrição">{e.description}</td>
+                        <td data-label="Tipo">{e.type === 'in' ? <span className="badge badge-success">Entrada</span> : <span className="badge badge-danger">Saída</span>}</td>
+                        <td style={{ fontWeight: 600, color: e.type === 'in' ? 'var(--color-success)' : 'var(--color-danger)' }} data-label="Valor">{e.type === 'in' ? '+' : '-'}{formatBRL(Number(e.amount))}</td>
                       </tr>
                     ))}
                   </tbody>
