@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -9,9 +10,7 @@ import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/Confirm';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { FieldLabel, FieldError } from '../../components/ui/Hint';
-import { BulkActionsBar } from '../../components/ui/BulkActionsBar';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
-import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { formatBRL } from '../../lib/format';
 import { IconBox, IconPlus, IconSearch, IconHistory, IconDots } from '../../components/ui/icons';
 
@@ -25,27 +24,45 @@ type Page = { items: Product[]; total: number; page: number; pages: number };
 const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0, ze_delivery_item_id: '', ze_delivery_sync_enabled: false };
 const ACTION_LABEL: Record<string, string> = { 'product.create': 'Cadastro', 'product.update': 'Edição', 'product.inactivate': 'Inativação' };
 
-/** Ações da linha num menu "⋮" — menos botões brigando por espaço, principalmente no cartão mobile. */
+/** Ações da linha num menu "⋮" — menos botões brigando por espaço, principalmente no cartão mobile.
+ *  O menu é renderizado num portal (como o Modal) pra não ser cortado pelo overflow do .table-wrap. */
 function RowActionsMenu({ product, onEdit, onInactivate, onActivate, onHistory }: {
   product: Product; onEdit: () => void; onInactivate: () => void; onActivate: () => void; onHistory: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    function onClick(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function place() {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 170) });
+    }
+    place();
+    function onClick(e: MouseEvent) {
+      if (menuRef.current?.contains(e.target as Node) || btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
     document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
   }, [open]);
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button className="btn btn-sm btn-ghost" aria-label={`Mais ações — ${product.name}`} onClick={() => setOpen((v) => !v)}>
+    <>
+      <button ref={btnRef} className="btn btn-sm btn-ghost" aria-label={`Mais ações — ${product.name}`} onClick={() => setOpen((v) => !v)}>
         <IconDots width={16} height={16} />
       </button>
-      {open && (
-        <div className="row-actions-menu" role="menu">
+      {open && createPortal(
+        <div ref={menuRef} className="row-actions-menu" role="menu" style={{ position: 'fixed', top: pos.top, left: pos.left }}>
           <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onEdit(); }}>Editar</button>
           {product.status === 'active' ? (
             <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onInactivate(); }}>Inativar</button>
@@ -55,9 +72,10 @@ function RowActionsMenu({ product, onEdit, onInactivate, onActivate, onHistory }
           <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onHistory(); }}>
             <IconHistory width={15} height={15} /> Histórico
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }
 
@@ -79,7 +97,6 @@ export function ProductsPage() {
   const [units, setUnits]           = useState<CatalogItem[]>([]);
   const [history, setHistory]       = useState<{ product: { id: string; name: string }; entries: HistoryEntry[] } | null>(null);
   const term = t('product').toLowerCase();
-  const bulk = useBulkSelection(page.items);
 
   async function load(p = currentPage) {
     setLoading(true);
@@ -154,17 +171,6 @@ export function ProductsPage() {
     setHistory(data);
   }
 
-  async function bulkInactivate() {
-    const targets = page.items.filter((p) => bulk.isSelected(p.id) && p.status === 'active');
-    if (targets.length === 0) { bulk.clear(); return; }
-    const ok = await confirm({ title: `Inativar ${targets.length} ${term}(s)?`, message: 'Os itens deixam de aparecer nas listas, mas todo o histórico é mantido.', confirmText: 'Sim, inativar', danger: true });
-    if (!ok) return;
-    await Promise.all(targets.map((p) => api.patch(`/products/${p.id}/inactivate`)));
-    toast.push(`${targets.length} ${term}(s) inativado(s).`, 'success');
-    bulk.clear();
-    await load();
-  }
-
   return (
     <div>
       <PageHeader
@@ -190,18 +196,13 @@ export function ProductsPage() {
         </div>
       ) : (
         <>
-          <BulkActionsBar count={bulk.count} onClear={bulk.clear}>
-            <button className="btn btn-sm" onClick={bulkInactivate}>Inativar selecionados</button>
-          </BulkActionsBar>
           <div className="table-wrap">
           <table className="table">
             <thead><tr>
-              <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
               <th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th><th>Zé Delivery</th><th></th></tr></thead>
             <tbody>
               {page.items.map((p) => (
                 <tr key={p.id}>
-                  <td className="bulk-col"><input type="checkbox" aria-label={`Selecionar ${p.name}`} checked={bulk.isSelected(p.id)} onChange={() => bulk.toggle(p.id)} /></td>
                   <td className="product-cell-td">
                     <div className="product-cell">
                       <span style={{ fontWeight: 600 }}>{p.name}</span>

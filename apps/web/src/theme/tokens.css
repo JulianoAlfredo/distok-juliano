@@ -225,18 +225,6 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 /* Célula composta (ex.: nome + situação numa coluna só) — usada em Produtos pra reduzir colunas */
 .product-cell { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 
-/* Menu de ações "⋮" por linha — reaproveita .user-menu-item (definido em AppShell) pros itens */
-.row-actions-menu {
-  position: absolute; top: calc(100% + 4px); right: 0;
-  min-width: 170px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  z-index: 100;
-  overflow: hidden;
-}
-
 /* ---------- Page header ---------- */
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; margin-bottom: var(--sp-6); }
 .page-head h1 { font-size: var(--fs-xl); }
@@ -600,9 +588,9 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .user-menu-danger { color: var(--color-danger); }
 
 .row-actions-menu {
-  position: absolute; top: calc(100% + 4px); right: 0; min-width: 170px;
+  min-width: 170px;
   background: var(--color-surface); border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 60; overflow: hidden;
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 300; overflow: hidden;
 }
 
 /* ---------- Célula "Produto" (Produtos) — nome + situação em destaque no cartão mobile ---------- */
