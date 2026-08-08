@@ -607,6 +607,11 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   .product-cell-td { font-size: var(--fs-md); padding-bottom: var(--sp-3) !important; margin-bottom: 4px; border-bottom: 1px solid var(--color-border); }
 }
 
+/* ---------- Campos no mobile: fonte < 16px faz Safari/Chrome dar zoom ao focar ---------- */
+@media (max-width: 640px) {
+  .input, .select, textarea.input { font-size: 16px; }
+}
+
 /* ---------- Barra de navegação inferior (mobile, <640px) ---------- */
 .bottom-nav { display: none; }
 @media (max-width: 640px) {
