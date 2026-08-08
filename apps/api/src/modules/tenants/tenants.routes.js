@@ -19,13 +19,15 @@ module.exports = async function tenantsRoutes(app) {
     schema: {
       body: {
         type: 'object',
-        required: ['name', 'cnpj', 'slug', 'planCode', 'adminName', 'adminEmail'],
+        required: ['name', 'cnpj', 'slug', 'adminName', 'adminEmail'],
         properties: {
           name: { type: 'string', minLength: 2 },
           cnpj: { type: 'string' },
           slug: { type: 'string', pattern: '^[a-z0-9-]{2,63}$' },
           address: { type: 'string' },
-          planCode: { type: 'string', enum: ['basic', 'pro'] },
+          // plano único hoje ("standard") — campo mantido opcional pra não travar se um dia
+          // voltarmos a ter mais de um plano.
+          planCode: { type: 'string' },
           adminName: { type: 'string', minLength: 2 },
           adminEmail: { type: 'string', format: 'email' },
         },

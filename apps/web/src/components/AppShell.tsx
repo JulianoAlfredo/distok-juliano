@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { to: '/relatorios', label: 'Relatórios', roles: ['admin'], icon: <IconReport /> },
   { to: '/marca', label: 'Marca', roles: ['admin'], icon: <IconBrand /> },
   { to: '/integracoes/ze-delivery', label: 'Zé Delivery', roles: ['admin'], icon: <IconTruck /> },
+  { to: '/minha-conta', label: 'Minha Conta', roles: ['admin', 'operator'], icon: <IconPerson /> },
   { to: '/admin/tenants', label: 'Distribuidoras', roles: ['super_admin'], icon: <IconBuilding /> },
   { to: '/admin/planos', label: 'Planos', roles: ['super_admin'], icon: <IconTag /> },
 ];

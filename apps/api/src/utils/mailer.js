@@ -1,36 +1,36 @@
 'use strict';
 
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const env = require('../config/env');
 
-let transporter = null;
+let client = null;
 
-function getTransporter() {
-  if (transporter) return transporter;
-  if (!env.mail.host) {
-    // Sem SMTP configurado: modo "log" (dev). Não quebra o fluxo de onboarding.
-    transporter = {
-      sendMail: async (msg) => {
-        console.log('[mailer:dev] e-mail não enviado (SMTP ausente):', {
-          to: msg.to,
-          subject: msg.subject,
-        });
-        return { messageId: 'dev-noop' };
+function getClient() {
+  if (client) return client;
+  if (!env.mail.resendApiKey) {
+    // Sem chave configurada: modo "log" (dev). Não quebra o fluxo de onboarding/testes.
+    client = {
+      emails: {
+        send: async (msg) => {
+          console.log('[mailer:dev] e-mail não enviado (RESEND_API_KEY ausente):', { to: msg.to, subject: msg.subject });
+          return { data: { id: 'dev-noop' }, error: null };
+        },
       },
     };
-    return transporter;
+    return client;
   }
-  transporter = nodemailer.createTransport({
-    host: env.mail.host,
-    port: env.mail.port,
-    secure: env.mail.port === 465,
-    auth: env.mail.user ? { user: env.mail.user, pass: env.mail.pass } : undefined,
-  });
-  return transporter;
+  client = new Resend(env.mail.resendApiKey);
+  return client;
 }
 
 async function sendMail({ to, subject, html, from }) {
-  return getTransporter().sendMail({ from: from || env.mail.from, to, subject, html });
+  const { error } = await getClient().emails.send({
+    from: from || env.mail.from,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+  });
+  if (error) throw new Error(`Falha ao enviar e-mail via Resend: ${error.message || error}`);
 }
 
 module.exports = { sendMail };

@@ -17,11 +17,11 @@ const uniq = uuid().slice(0, 8);
 
 before(async () => {
   basicPlanId = uuid();
-  const basic = DEFAULT_PLANS.find((p) => p.code === 'basic');
-  // garante um plano com code 'basic' (createTenant busca por code)
-  const existing = await knex('plans').where({ code: 'basic' }).first();
+  const standard = DEFAULT_PLANS.find((p) => p.code === 'standard');
+  // garante um plano com code 'standard' (createTenant/provisionTenant busca por code)
+  const existing = await knex('plans').where({ code: 'standard' }).first();
   if (!existing) {
-    await knex('plans').insert({ id: basicPlanId, code: 'basic', name: 'Básico', price_cents: 7990, max_users: 3, max_products: 200, features: JSON.stringify(basic.features) });
+    await knex('plans').insert({ id: basicPlanId, code: 'standard', name: standard.name, price_cents: standard.price_cents, max_users: standard.max_users, max_products: standard.max_products, features: JSON.stringify(standard.features) });
   } else {
     basicPlanId = existing.id;
   }
@@ -44,7 +44,7 @@ test('FR1/FR7: createTenant cria tenant + admin + branding + terminologia', asyn
     name: 'Distribuidora Teste',
     cnpj: `00.000.${uniq.slice(0, 3)}/0001-00`,
     slug: `teste-${uniq}`,
-    planCode: 'basic',
+    planCode: 'standard',
     adminName: 'Admin Teste',
     adminEmail: `admin-${uniq}@teste.com`,
     ip: '127.0.0.1',

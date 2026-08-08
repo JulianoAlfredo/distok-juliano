@@ -16,6 +16,8 @@ import { LoginPage }          from './features/auth/LoginPage';
 import { ChangePasswordPage } from './features/auth/ChangePasswordPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
 import { ResetPasswordPage }  from './features/auth/ResetPasswordPage';
+import { SignupPage }         from './features/auth/SignupPage';
+import { VerifyCodePage }     from './features/auth/VerifyCodePage';
 
 // App pages — lazy (só carregam após login)
 const DashboardPage  = lazy(() => import('./features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -34,6 +36,7 @@ const SalesPage      = lazy(() => import('./features/sales/SalesPage').then((m) 
 const CashierPage    = lazy(() => import('./features/cashier/CashierPage').then((m) => ({ default: m.CashierPage })));
 const FinancialPage  = lazy(() => import('./features/financial/FinancialPage').then((m) => ({ default: m.FinancialPage })));
 const ZeDeliverySettings = lazy(() => import('./features/ze-delivery/ZeDeliverySettings').then((m) => ({ default: m.ZeDeliverySettings })));
+const AccountSettings = lazy(() => import('./features/account/AccountSettings').then((m) => ({ default: m.AccountSettings })));
 
 function PageFallback() {
   return (
@@ -67,6 +70,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <CommandPaletteProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/cadastro" element={<SignupPage />} />
+              <Route path="/cadastro/confirmar" element={<VerifyCodePage />} />
               <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
               <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
               <Route path="/trocar-senha" element={<ChangePasswordPage />} />
@@ -74,6 +79,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/relatorios"    element={<RequireAuth><ReportsPage /></RequireAuth>} />
               <Route path="/marca"         element={<RequireAuth><BrandingEditor /></RequireAuth>} />
               <Route path="/integracoes/ze-delivery" element={<RequireAuth><ZeDeliverySettings /></RequireAuth>} />
+              <Route path="/minha-conta" element={<RequireAuth><AccountSettings /></RequireAuth>} />
               <Route path="/produtos"      element={<RequireAuth><ProductsPage /></RequireAuth>} />
               <Route path="/estoque"       element={<RequireAuth><StockPage /></RequireAuth>} />
               <Route path="/clientes"      element={<RequireAuth><CustomersPage /></RequireAuth>} />

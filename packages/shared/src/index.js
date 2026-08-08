@@ -36,30 +36,19 @@ const MOVEMENT_TYPES = Object.freeze({
 const EXIT_REASONS = Object.freeze(['venda', 'perda', 'devolucao', 'transferencia']);
 
 const PLAN_CODES = Object.freeze({
-  BASIC: 'basic',
-  PRO: 'pro',
+  STANDARD: 'standard',
 });
 
-/** Catálogo de planos padrão (semente). features controla o que cada plano libera. */
+/**
+ * Catálogo de planos padrão (semente). Plano único — R$39,90/mês, cobre tudo que o DISTOK
+ * oferece hoje. Cobrança real (Stripe) e diferenciação de tiers ficam pra depois.
+ */
 const DEFAULT_PLANS = Object.freeze([
   {
-    code: PLAN_CODES.BASIC,
-    name: 'Básico',
-    price_cents: 7990,
-    max_users: 3,
-    max_products: 200,
-    features: {
-      csv: false,
-      customDomain: false,
-      terminology: false,
-      reportFooter: false,
-    },
-  },
-  {
-    code: PLAN_CODES.PRO,
-    name: 'Pro',
-    price_cents: 14990,
-    max_users: 10,
+    code: PLAN_CODES.STANDARD,
+    name: 'DISTOK',
+    price_cents: 3990,
+    max_users: null, // ilimitado
     max_products: null, // ilimitado
     features: {
       csv: true,

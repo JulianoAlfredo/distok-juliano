@@ -97,4 +97,35 @@ module.exports = async function authRoutes(app) {
     await service.reset({ token: req.body.token, newPassword: req.body.newPassword });
     return reply.status(204).send();
   });
+
+  app.post('/email-change/request', {
+    ...authRateLimit,
+    preHandler: [authenticate],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['newEmail', 'currentPassword'],
+        properties: {
+          newEmail: { type: 'string', format: 'email', maxLength: 254 },
+          currentPassword: { type: 'string' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    await service.requestEmailChange({ ctx: req.ctx, newEmail: req.body.newEmail, currentPassword: req.body.currentPassword, ip: req.ip });
+    return reply.status(204).send();
+  });
+
+  app.post('/email-change/confirm', {
+    preHandler: [authenticate],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['code'],
+        properties: { code: { type: 'string', minLength: 6, maxLength: 6 } },
+      },
+    },
+  }, async (req) => {
+    return service.confirmEmailChange({ ctx: req.ctx, code: req.body.code, ip: req.ip });
+  });
 };

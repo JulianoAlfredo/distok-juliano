@@ -13,7 +13,7 @@ type Tenant = {
 };
 type Metrics = { tenants: number; active: number; mrr: number; byPlan: { plan: string; count: number }[] };
 
-const EMPTY = { name: '', cnpj: '', slug: '', slugTouched: false, address: '', planCode: 'basic', adminName: '', adminEmail: '' };
+const EMPTY = { name: '', cnpj: '', slug: '', slugTouched: false, address: '', adminName: '', adminEmail: '' };
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function TenantsPage() {
@@ -105,10 +105,6 @@ export function TenantsPage() {
             <div className="field" style={{ margin: 0 }}>
               <FieldLabel hint="Endereço web exclusivo da empresa. Geramos um para você a partir do nome — pode ajustar.">Endereço (subdomínio)</FieldLabel>
               <input className="input" placeholder="ex: distribuidorasol" value={form.slug} onChange={(e) => setForm({ ...form, slug: slugify(e.target.value), slugTouched: true })} />
-            </div>
-            <div className="field" style={{ margin: 0 }}>
-              <FieldLabel hint="Define limites e recursos disponíveis para a empresa.">Plano</FieldLabel>
-              <select className="input" value={form.planCode} onChange={(e) => setForm({ ...form, planCode: e.target.value })}><option value="basic">Básico</option><option value="pro">Pro</option></select>
             </div>
             <div className="field" style={{ margin: 0 }}>
               <FieldLabel required>Nome do administrador</FieldLabel>

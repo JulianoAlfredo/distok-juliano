@@ -122,8 +122,8 @@ exports.seed = async function seed(knex) {
     return tenantId;
   }
 
-  await createTenant({ name: 'Distribuidora Bebidas Sul', slug: 'bebidassul', cnpj: '11.111.111/0001-11', planCode: 'pro', primary: '#1B7F3B' });
-  await createTenant({ name: 'AtacadãoX', slug: 'atacadaox', cnpj: '22.222.222/0001-22', planCode: 'basic', primary: '#B91C1C' });
+  await createTenant({ name: 'Distribuidora Bebidas Sul', slug: 'bebidassul', cnpj: '11.111.111/0001-11', planCode: 'standard', primary: '#1B7F3B' });
+  await createTenant({ name: 'AtacadãoX', slug: 'atacadaox', cnpj: '22.222.222/0001-22', planCode: 'standard', primary: '#B91C1C' });
 
   console.log('Seed concluído. Login demo: super@distok.com.br / admin@bebidassul.com / senha: distok123');
 };

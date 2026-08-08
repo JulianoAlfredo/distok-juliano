@@ -27,6 +27,7 @@ const cashierRoutes    = require('./modules/cashier/cashier.routes');
 const financialRoutes  = require('./modules/financial/financial.routes');
 const zeDeliveryAdminRoutes = require('./modules/ze-delivery/ze-delivery.admin.routes');
 const zeDeliveryInternalRoutes = require('./modules/ze-delivery/ze-delivery.internal.routes');
+const signupRoutes = require('./modules/signup/signup.routes');
 
 /** Monta a instância Fastify com plugins, middlewares e rotas. */
 async function buildApp() {
@@ -81,6 +82,7 @@ async function buildApp() {
   // Rotas v1
   app.register(authRoutes, { prefix: '/api/v1/auth' });
   app.register(brandingPublicRoutes, { prefix: '/api/v1/public' });
+  app.register(signupRoutes, { prefix: '/api/v1/public' });
   app.register(brandingAdminRoutes, { prefix: '/api/v1/branding' });
   app.register(productsRoutes, { prefix: '/api/v1/products' });
   app.register(usersRoutes, { prefix: '/api/v1/users' });

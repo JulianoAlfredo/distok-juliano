@@ -6,10 +6,10 @@ const { Errors } = require('../../core/errors');
 const password = require('../../utils/password');
 const audit = require('../../utils/audit');
 const { sendMail } = require('../../utils/mailer');
-const { htmlEscape } = require('../../utils/sanitize');
+const emailTemplates = require('../../utils/email-templates');
 const env = require('../../config/env');
 const {
-  ROLES, TENANT_STATUS, USER_STATUS, DEFAULT_TERMINOLOGY,
+  ROLES, TENANT_STATUS, USER_STATUS, PLAN_CODES, DEFAULT_TERMINOLOGY,
 } = require('@distok/shared');
 
 /** Normaliza um texto em slug seguro para subdomínio. */
@@ -20,6 +20,40 @@ const slugify = (v) =>
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '')
     .slice(0, 40);
+
+/**
+ * Provisiona o "esqueleto" de um tenant (tenant + branding padrão + terminologia padrão)
+ * dentro de uma transação já aberta — reaproveitado tanto pelo cadastro admin-driven
+ * (`createTenant`, super_admin) quanto pelo signup público self-service
+ * (`modules/signup/signup.service.js`). Não cria usuário — cada chamador decide como (senha
+ * temporária vs senha própria, status active vs inactive-até-verificar).
+ */
+async function provisionTenant(trx, { name, cnpj, slug, address, planCode = PLAN_CODES.STANDARD, trialEndsAt = null }) {
+  const plan = await trx('plans').where({ code: planCode }).first();
+  if (!plan) throw Errors.validation('Plano inexistente');
+
+  const finalSlug = slugify(slug || name);
+  if (!finalSlug) throw Errors.validation('Informe um nome válido para a empresa.');
+
+  const dup =
+    (await trx('tenants').where({ slug: finalSlug }).first()) ||
+    (cnpj && (await trx('tenants').where({ cnpj }).first()));
+  if (dup) {
+    console.warn('[tenants.provision] cadastro duplicado (slug/cnpj)');
+    throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
+  }
+
+  const tenantId = uuid();
+  await trx('tenants').insert({
+    id: tenantId, name, slug: finalSlug, cnpj, address: address || null,
+    plan_id: plan.id, status: TENANT_STATUS.ACTIVE, trial_ends_at: trialEndsAt,
+  });
+  await trx('tenant_branding').insert({ tenant_id: tenantId, display_name: name });
+  for (const [term_key, term_value] of Object.entries(DEFAULT_TERMINOLOGY)) {
+    await trx('tenant_terminology').insert({ tenant_id: tenantId, term_key, term_value });
+  }
+  return { tenantId, slug: finalSlug, plan };
+}
 
 async function listTenants({ status, plan, page = 1, limit = 25 }) {
   const q = knex('tenants')
@@ -36,42 +70,27 @@ async function listTenants({ status, plan, page = 1, limit = 25 }) {
 }
 
 async function createTenant({ ctx, name, cnpj, slug, address, planCode, adminName, adminEmail, ip }) {
-  const plan = await knex('plans').where({ code: planCode }).first();
-  if (!plan) throw Errors.validation('Plano inexistente');
-
-  // normaliza o slug (gera a partir do nome se vier vazio)
-  slug = slugify(slug || name);
-  if (!slug) throw Errors.validation('Informe um nome válido para a empresa.');
-
-  // validações de duplicidade — mensagem genérica (não revela o que existe) + log interno
-  const dup =
-    (await knex('tenants').where({ slug }).first()) ||
-    (cnpj && (await knex('tenants').where({ cnpj }).first())) ||
-    (await knex('users').where({ email: adminEmail }).first());
-  if (dup) {
-    console.warn('[tenants.create] cadastro duplicado (slug/cnpj/e-mail)');
+  // e-mail do admin é checado aqui (fora de provisionTenant, que só sabe de slug/cnpj) —
+  // mesma mensagem genérica pra não revelar o que já existe.
+  if (await knex('users').where({ email: adminEmail }).first()) {
+    console.warn('[tenants.create] e-mail de admin já cadastrado');
     throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
   }
 
-  const tenantId = uuid();
   const tempPass = password.generateTempPassword();
   const hash = await password.hash(tempPass);
+  let tenantId; let finalSlug;
 
   await knex.transaction(async (trx) => {
-    await trx('tenants').insert({
-      id: tenantId, name, slug, cnpj, address: address || null,
-      plan_id: plan.id, status: TENANT_STATUS.ACTIVE,
-    });
-    await trx('tenant_branding').insert({ tenant_id: tenantId, display_name: name });
-    for (const [term_key, term_value] of Object.entries(DEFAULT_TERMINOLOGY)) {
-      await trx('tenant_terminology').insert({ tenant_id: tenantId, term_key, term_value });
-    }
+    const provisioned = await provisionTenant(trx, { name, cnpj, slug, address, planCode });
+    tenantId = provisioned.tenantId;
+    finalSlug = provisioned.slug;
     await trx('users').insert({
       id: uuid(), tenant_id: tenantId, name: adminName, email: adminEmail,
       password_hash: hash, role: ROLES.ADMIN, must_change_password: 1, status: USER_STATUS.ACTIVE,
     });
     await audit.record(
-      { ctx, action: 'tenant.create', entityType: 'tenant', entityId: tenantId, after: { name, slug, plan: planCode }, ip },
+      { ctx, action: 'tenant.create', entityType: 'tenant', entityId: tenantId, after: { name, slug: finalSlug, plan: planCode }, ip },
       trx
     );
   });
@@ -80,14 +99,13 @@ async function createTenant({ ctx, name, cnpj, slug, address, planCode, adminNam
   await sendMail({
     to: adminEmail,
     subject: 'Bem-vindo ao DISTOK — suas credenciais de acesso',
-    html: `<p>Olá, ${htmlEscape(adminName)}!</p>
-           <p>Sua distribuidora <b>${htmlEscape(name)}</b> foi cadastrada no DISTOK.</p>
-           <p>Acesse: <a href="https://${htmlEscape(slug)}.${env.ROOT_DOMAIN}">${htmlEscape(slug)}.${env.ROOT_DOMAIN}</a></p>
-           <p>Login: <b>${htmlEscape(adminEmail)}</b><br/>Senha temporária: <b>${htmlEscape(tempPass)}</b></p>
-           <p>No primeiro acesso você deverá criar uma nova senha.</p>`,
+    html: emailTemplates.tempPasswordEmail({
+      name: adminName, email: adminEmail, tempPassword: tempPass,
+      loginUrl: `https://${finalSlug}.${env.ROOT_DOMAIN}`,
+    }),
   });
 
-  return { id: tenantId, name, slug, status: TENANT_STATUS.ACTIVE, planCode };
+  return { id: tenantId, name, slug: finalSlug, status: TENANT_STATUS.ACTIVE, planCode };
 }
 
 async function updateStatus({ ctx, tenantId, status, ip }) {
@@ -115,7 +133,7 @@ async function resetAdminPassword({ ctx, tenantId, ip }) {
   await sendMail({
     to: admin.email,
     subject: 'DISTOK — sua senha foi redefinida',
-    html: `<p>Sua senha temporária: <b>${tempPass}</b>. Troque no próximo acesso.</p>`,
+    html: emailTemplates.tempPasswordEmail({ name: admin.name, email: admin.email, tempPassword: tempPass }),
   });
   return { ok: true };
 }
@@ -138,4 +156,4 @@ async function metrics() {
   };
 }
 
-module.exports = { listTenants, createTenant, updateStatus, resetAdminPassword, metrics };
+module.exports = { listTenants, createTenant, updateStatus, resetAdminPassword, metrics, provisionTenant, slugify };

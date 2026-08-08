@@ -2,10 +2,12 @@
 
 const { v4: uuid } = require('uuid');
 const knex = require('../../db/knex');
-const { Errors } = require('../../core/errors');
+const { Errors, AppError } = require('../../core/errors');
 const { sign } = require('../../utils/jwt');
 const password = require('../../utils/password');
 const { sendMail } = require('../../utils/mailer');
+const emailTemplates = require('../../utils/email-templates');
+const VerificationCodes = require('../../core/VerificationCodes');
 const audit = require('../../utils/audit');
 const env = require('../../config/env');
 const { ROLES, TENANT_STATUS, USER_STATUS } = require('@distok/shared');
@@ -138,9 +140,7 @@ async function forgot({ email, tenantSlug }) {
     await sendMail({
       to: email,
       subject: 'Redefinição de senha — DISTOK',
-      html: `<p>Recebemos um pedido para redefinir sua senha.</p>
-             <p><a href="${link}">Clique aqui para criar uma nova senha</a> (válido por 1 hora).</p>
-             <p>Se não foi você, ignore este e-mail.</p>`,
+      html: emailTemplates.passwordResetLinkEmail({ name: user.name, link }),
     });
   }
   return { ok: true };
@@ -157,7 +157,7 @@ async function reset({ token, newPassword }) {
     .first();
   if (!row) throw Errors.validation('Token inválido');
   if (new Date(row.expires_at).getTime() < Date.now()) {
-    throw new (require('../../core/errors').AppError)(410, 'GONE', 'Token expirado');
+    throw new AppError(410, 'GONE', 'Token expirado');
   }
   const hash = await password.hash(newPassword);
   await knex.transaction(async (trx) => {
@@ -167,4 +167,66 @@ async function reset({ token, newPassword }) {
   return { ok: true };
 }
 
-module.exports = { login, me, refresh, changePassword, forgot, reset };
+/** Checa unicidade de e-mail respeitando o mesmo escopo do `UNIQUE KEY uq_users_tenant_email`. */
+async function emailTakenInScope(email, tenantId, trx) {
+  const db = trx || knex;
+  const q = db('users').where({ email });
+  if (tenantId) q.where('tenant_id', tenantId);
+  else q.whereNull('tenant_id');
+  return !!(await q.first());
+}
+
+/**
+ * Passo 1 da troca de e-mail self-service: exige a senha atual (evita que uma sessão
+ * vazada troque o e-mail sem saber a senha) e manda o código pro e-mail NOVO — prova posse
+ * da caixa de entrada antes de qualquer mudança.
+ */
+async function requestEmailChange({ ctx, newEmail, currentPassword, ip }) {
+  const user = await knex('users').where({ id: ctx.userId }).first();
+  if (!user) throw Errors.unauthorized();
+  const ok = await password.compare(currentPassword, user.password_hash);
+  if (!ok) throw Errors.validation('Senha atual incorreta');
+  if (newEmail === user.email) throw Errors.validation('Esse já é o seu e-mail atual');
+  if (await emailTakenInScope(newEmail, user.tenant_id)) {
+    throw Errors.validation('Não foi possível concluir a solicitação. Verifique os dados e tente novamente.');
+  }
+
+  const code = await knex.transaction(async (trx) => {
+    const c = await VerificationCodes.create(trx, { userId: user.id, purpose: 'email_change', targetEmail: newEmail });
+    await audit.record({ ctx, action: 'auth.email_change_requested', entityType: 'user', entityId: user.id, after: { newEmail }, ip }, trx);
+    return c;
+  });
+  await sendMail({
+    to: newEmail,
+    subject: 'Confirme seu novo e-mail — DISTOK',
+    html: emailTemplates.verificationCodeEmail({
+      name: user.name,
+      code,
+      context: 'Use o código abaixo para confirmar este e-mail como o novo login da sua conta DISTOK.',
+    }),
+  });
+  return { ok: true };
+}
+
+/** Passo 2: confirma o código e efetiva a troca. */
+async function confirmEmailChange({ ctx, code, ip }) {
+  const user = await knex('users').where({ id: ctx.userId }).first();
+  if (!user) throw Errors.unauthorized();
+
+  let newEmail;
+  await knex.transaction(async (trx) => {
+    const row = await VerificationCodes.verify(trx, { userId: user.id, purpose: 'email_change', code });
+    newEmail = row.target_email;
+    if (await emailTakenInScope(newEmail, user.tenant_id, trx)) {
+      throw Errors.validation('Esse e-mail passou a estar em uso — solicite a troca novamente.');
+    }
+    await trx('users').where({ id: user.id }).update({ email: newEmail });
+    await audit.record(
+      { ctx, action: 'auth.email_change', entityType: 'user', entityId: user.id, before: { email: user.email }, after: { email: newEmail }, ip },
+      trx
+    );
+  });
+  return { email: newEmail };
+}
+
+module.exports = { login, me, refresh, changePassword, forgot, reset, requestEmailChange, confirmEmailChange };

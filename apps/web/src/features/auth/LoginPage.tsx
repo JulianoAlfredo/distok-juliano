@@ -81,6 +81,9 @@ export function LoginPage() {
         <div style={{ textAlign: 'center', marginTop: 'var(--sp-4)' }}>
           <Link to="/esqueci-senha" style={{ fontSize: 'var(--fs-sm)' }}>Esqueci minha senha</Link>
         </div>
+        <div style={{ textAlign: 'center', marginTop: 'var(--sp-2)' }}>
+          <Link to="/cadastro" style={{ fontSize: 'var(--fs-sm)' }}>Criar conta</Link>
+        </div>
       </form>
     </AuthLayout>
   );

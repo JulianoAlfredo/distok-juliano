@@ -7,7 +7,7 @@ const { Errors } = require('../../core/errors');
 const audit = require('../../utils/audit');
 const password = require('../../utils/password');
 const { sendMail } = require('../../utils/mailer');
-const { htmlEscape } = require('../../utils/sanitize');
+const emailTemplates = require('../../utils/email-templates');
 const env = require('../../config/env');
 const { assertCanAddUser } = require('../../middlewares/plan-guard');
 const { ROLES, USER_STATUS } = require('@distok/shared');
@@ -59,10 +59,7 @@ async function create(ctx, data) {
   await sendMail({
     to: data.email,
     subject: 'Seu acesso ao DISTOK',
-    html: `<p>Olá, ${htmlEscape(data.name)}!</p>
-           <p>Você recebeu acesso ao sistema.</p>
-           <p>Login: <b>${htmlEscape(data.email)}</b><br/>Senha temporária: <b>${htmlEscape(tempPass)}</b></p>
-           <p>Acesse <a href="${env.APP_BASE_URL}">${env.APP_BASE_URL}</a> e troque a senha no primeiro acesso.</p>`,
+    html: emailTemplates.tempPasswordEmail({ name: data.name, email: data.email, tempPassword: tempPass, loginUrl: env.APP_BASE_URL }),
   });
 
   const created = await repo(ctx).query().select(PUBLIC_COLS).where('users.id', id).first();

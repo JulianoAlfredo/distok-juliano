@@ -43,11 +43,8 @@ const env = {
   },
 
   mail: {
-    host: process.env.MAIL_SMTP_HOST || '',
-    port: parseInt(process.env.MAIL_SMTP_PORT || '587', 10),
-    user: process.env.MAIL_SMTP_USER || '',
-    pass: process.env.MAIL_SMTP_PASS || '',
-    from: process.env.MAIL_FROM || 'DISTOK <no-reply@distok.com.br>',
+    resendApiKey: required('RESEND_API_KEY', isTest ? '' : undefined),
+    from: process.env.MAIL_FROM || 'SUPORTE DISTOK <suporte@distok.com.br>',
   },
 
   uploads: {

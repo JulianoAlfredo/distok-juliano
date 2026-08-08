@@ -7,17 +7,20 @@ const { v4: uuid } = require('uuid');
 const knex = require('../../src/db/knex');
 const TenantContext = require('../../src/core/TenantContext');
 const service = require('../../src/modules/branding/branding.service');
-const { ROLES, DEFAULT_PLANS } = require('@distok/shared');
+const { ROLES } = require('@distok/shared');
 
 let basicPlan; let proPlan; let tBasic; let tPro;
 
+// Features "desligadas" vs "ligadas" definidas aqui (não a partir de DEFAULT_PLANS) — o que
+// este teste exercita é o gating do plan-guard, não o catálogo real de planos do produto
+// (hoje só existe 1 plano, com tudo ligado).
 before(async () => {
   basicPlan = uuid(); proPlan = uuid(); tBasic = uuid(); tPro = uuid();
-  const basic = DEFAULT_PLANS.find((p) => p.code === 'basic');
-  const pro = DEFAULT_PLANS.find((p) => p.code === 'pro');
+  const basicFeatures = { csv: false, customDomain: false, terminology: false, reportFooter: false };
+  const proFeatures = { csv: true, customDomain: true, terminology: true, reportFooter: true };
   await knex('plans').insert([
-    { id: basicPlan, code: 'basic-t', name: 'Básico', price_cents: 7990, max_users: 3, max_products: 200, features: JSON.stringify(basic.features) },
-    { id: proPlan, code: 'pro-t', name: 'Pro', price_cents: 14990, max_users: 10, max_products: null, features: JSON.stringify(pro.features) },
+    { id: basicPlan, code: 'basic-t', name: 'Básico', price_cents: 7990, max_users: 3, max_products: 200, features: JSON.stringify(basicFeatures) },
+    { id: proPlan, code: 'pro-t', name: 'Pro', price_cents: 14990, max_users: 10, max_products: null, features: JSON.stringify(proFeatures) },
   ]);
   await knex('tenants').insert([
     { id: tBasic, name: 'T Basic', slug: 'tb-' + tBasic.slice(0, 6), cnpj: 'B' + tBasic.slice(0, 12), plan_id: basicPlan },
