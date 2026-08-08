@@ -26,8 +26,8 @@ const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale
 const ACTION_LABEL: Record<string, string> = { 'product.create': 'Cadastro', 'product.update': 'Edição', 'product.inactivate': 'Inativação' };
 
 /** Ações da linha num menu "⋮" — menos botões brigando por espaço, principalmente no cartão mobile. */
-function RowActionsMenu({ product, onEdit, onInactivate, onHistory }: {
-  product: Product; onEdit: () => void; onInactivate: () => void; onHistory: () => void;
+function RowActionsMenu({ product, onEdit, onInactivate, onActivate, onHistory }: {
+  product: Product; onEdit: () => void; onInactivate: () => void; onActivate: () => void; onHistory: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -47,8 +47,10 @@ function RowActionsMenu({ product, onEdit, onInactivate, onHistory }: {
       {open && (
         <div className="row-actions-menu" role="menu">
           <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onEdit(); }}>Editar</button>
-          {product.status === 'active' && (
+          {product.status === 'active' ? (
             <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onInactivate(); }}>Inativar</button>
+          ) : (
+            <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onActivate(); }}>Ativar</button>
           )}
           <button className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); onHistory(); }}>
             <IconHistory width={15} height={15} /> Histórico
@@ -141,6 +143,12 @@ export function ProductsPage() {
     await load();
   }
 
+  async function activate(p: Product) {
+    await api.patch(`/products/${p.id}/activate`);
+    toast.push('Item ativado.', 'success');
+    await load();
+  }
+
   async function openHistory(p: Product) {
     const { data } = await api.get(`/products/${p.id}/history`);
     setHistory(data);
@@ -214,6 +222,7 @@ export function ProductsPage() {
                       product={p}
                       onEdit={() => startEdit(p)}
                       onInactivate={() => inactivate(p)}
+                      onActivate={() => activate(p)}
                       onHistory={() => openHistory(p)}
                     />
                   </td>
@@ -239,7 +248,7 @@ export function ProductsPage() {
             <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
             <button className="btn" onClick={() => setOpen(false)}>Cancelar</button>
             {margin != null && (
-              <span className="muted" style={{ marginLeft: 'auto', fontSize: 'var(--fs-sm)' }}>
+              <span className="muted modal-foot-margin">
                 Lucro por item: <strong style={{ color: margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{margin}%</strong>
               </span>
             )}

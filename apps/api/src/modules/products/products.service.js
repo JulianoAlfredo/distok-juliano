@@ -104,6 +104,14 @@ async function inactivate(ctx, id) {
   return get(ctx, id);
 }
 
+async function activate(ctx, id) {
+  const before = await repo(ctx).findById(id);
+  if (!before) throw Errors.notFound('Produto não encontrado');
+  await repo(ctx).updateById(id, { status: PRODUCT_STATUS.ACTIVE });
+  await audit.record({ ctx, action: 'product.activate', entityType: 'product', entityId: id, before, ip: ctx.ip });
+  return get(ctx, id);
+}
+
 async function history(ctx, id) {
   const product = await repo(ctx).findById(id);
   if (!product) throw Errors.notFound('Produto não encontrado');
@@ -111,4 +119,4 @@ async function history(ctx, id) {
   return { product: { id: product.id, name: product.name }, entries };
 }
 
-module.exports = { list, get, create, update, inactivate, history, margin };
+module.exports = { list, get, create, update, inactivate, activate, history, margin };

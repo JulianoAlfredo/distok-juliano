@@ -53,6 +53,11 @@ module.exports = async function productsRoutes(app) {
     return service.inactivate(req.ctx, req.params.id);
   });
 
+  app.patch('/:id/activate', adminOnly, async (req) => {
+    req.ctx.ip = req.ip;
+    return service.activate(req.ctx, req.params.id);
+  });
+
   app.get('/:id/history', adminOnly, async (req) => {
     req.ctx.ip = req.ip;
     return service.history(req.ctx, req.params.id);
