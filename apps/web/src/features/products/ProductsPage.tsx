@@ -201,7 +201,7 @@ export function ProductsPage() {
           <div className="table-wrap">
           <table className="table">
             <thead><tr>
-              <th>Produto</th><th>Preço</th><th>Código</th><th>Categoria</th><th>Zé Delivery</th><th></th><th></th></tr></thead>
+              <th>Produto</th><th>Preço</th><th>Código</th><th>Categoria</th><th>Zé Delivery</th><th></th></tr></thead>
             <tbody>
               {page.items.map((p) => (
                 <tr key={p.id} className={isExpanded(p.id) ? 'tr-expanded' : ''}>
@@ -220,12 +220,10 @@ export function ProductsPage() {
                   <td className="td-secondary" data-label="Zé Delivery">
                     {p.ze_delivery_sync_enabled ? <span className="badge badge-success">sync</span> : p.ze_delivery_item_id ? <span className="badge">vinculado</span> : '—'}
                   </td>
-                  <td className="tr-expand-toggle">
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggle(p.id)}>
+                  <td style={{ justifyContent: 'space-between' }}>
+                    <button type="button" className="btn btn-sm mobile-only-inline" onClick={() => toggle(p.id)}>
                       {isExpanded(p.id) ? 'Ver menos' : 'Ver mais'}
                     </button>
-                  </td>
-                  <td>
                     <RowActionsMenu
                       product={p}
                       onEdit={() => startEdit(p)}

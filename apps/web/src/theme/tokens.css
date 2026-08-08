@@ -630,7 +630,7 @@ button.stat:hover { border-color: var(--color-text-faint); box-shadow: var(--sha
 }
 
 /* Fora do mobile: "Ver mais" por linha e o toggle de filtros não existem (tabela e filtros completos já cabem). */
-.tr-expand-toggle, .drilldown-filters-toggle { display: none; }
+.tr-expand-toggle, .drilldown-filters-toggle, .mobile-only-inline { display: none; }
 
 /* ---------- Tabelas responsivas (mobile, <640px): linha vira cartão ---------- */
 @media (max-width: 640px) {
@@ -669,6 +669,8 @@ button.stat:hover { border-color: var(--color-text-faint); box-shadow: var(--sha
     padding-top: var(--sp-2); margin-top: 2px;
     border-top: 1px dashed var(--color-border);
   }
+  /* Variante inline (ex.: Produtos, ao lado do menu "⋮" em vez de linha própria). */
+  .mobile-only-inline { display: inline-flex; }
 
   /* Barra de filtros das modais de drill-down: começa recolhida, evita empurrar a lista pra baixo da dobra. */
   .drilldown-filters-toggle { display: inline-flex; margin-bottom: var(--sp-3); }
