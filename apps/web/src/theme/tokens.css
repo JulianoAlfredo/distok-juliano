@@ -629,6 +629,9 @@ button.stat:hover { border-color: var(--color-text-faint); box-shadow: var(--sha
   .bottom-nav-ico svg { width: 22px; height: 22px; }
 }
 
+/* Fora do mobile: "Ver mais" por linha e o toggle de filtros não existem (tabela e filtros completos já cabem). */
+.tr-expand-toggle, .drilldown-filters-toggle { display: none; }
+
 /* ---------- Tabelas responsivas (mobile, <640px): linha vira cartão ---------- */
 @media (max-width: 640px) {
   .table-wrap { overflow-x: visible; }
@@ -653,6 +656,23 @@ button.stat:hover { border-color: var(--color-text-faint); box-shadow: var(--sha
   }
   .table td:not([data-label]) { justify-content: flex-start; }
   .table td.bulk-col { display: none; } /* seleção em massa não faz sentido no cartão mobile */
+
+  /* Campos secundários: escondidos por padrão no cartão mobile, só aparecem com "Ver mais" — evita poluir o pouco espaço com informação de segunda ordem. */
+  .table td.td-secondary { display: none; }
+  .table tr.tr-expanded td.td-secondary { display: flex; }
+  /* Campo de texto longo (ex.: descrição): rótulo em cima, valor embaixo, em vez de espremer lado a lado. */
+  .table td.td-stack { flex-direction: column; align-items: flex-start; gap: 2px; }
+
+  /* Botão "Ver mais/Ver menos" por linha — só existe no cartão mobile. */
+  .tr-expand-toggle {
+    display: flex; justify-content: center;
+    padding-top: var(--sp-2); margin-top: 2px;
+    border-top: 1px dashed var(--color-border);
+  }
+
+  /* Barra de filtros das modais de drill-down: começa recolhida, evita empurrar a lista pra baixo da dobra. */
+  .drilldown-filters-toggle { display: inline-flex; margin-bottom: var(--sp-3); }
+  .drilldown-filters:not(.open) { display: none; }
 }
 
 /* ---------- Alertas/menu de usuário: não estourar a tela em phones estreitos ---------- */

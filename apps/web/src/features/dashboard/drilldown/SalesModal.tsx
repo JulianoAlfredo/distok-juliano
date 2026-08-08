@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loading, EmptyState } from '../../../components/ui';
 import { IconTrendUp, IconSearch } from '../../../components/ui/icons';
 import { formatBRL } from '../../../lib/format';
+import { useExpandedRows } from '../../../hooks/useExpandedRows';
 import { useDrilldown } from '../useDrilldown';
 import { DrilldownModal } from './DrilldownModal';
 import { PAYMENT } from '../constants';
@@ -15,6 +16,7 @@ export function SalesModal({ open, onClose, initialPeriod }: { open: boolean; on
     '/dashboard/drilldown/sales',
     { period: initialPeriod, dateFrom: '', dateTo: '', search: '', paymentMethod: '', includeCancelled: false },
   );
+  const { isExpanded, toggle } = useExpandedRows();
 
   function setDateFrom(v: string) {
     setFilter('dateFrom', v);
@@ -83,22 +85,27 @@ export function SalesModal({ open, onClose, initialPeriod }: { open: boolean; on
       ) : (
         <div className="table-wrap" style={{ boxShadow: 'none' }}>
           <table className="table">
-            <thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Unid.</th><th>Pagamento</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Total</th><th>Status</th><th>#</th><th>Itens</th><th>Unid.</th><th>Pagamento</th><th>Data</th><th></th></tr></thead>
             <tbody>
               {data.items.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 700 }} data-label="#">#{s.number}</td>
+                <tr key={s.id} className={isExpanded(s.id) ? 'tr-expanded' : ''}>
                   <td data-label="Cliente">{s.customer_name || <span className="muted">Avulso</span>}</td>
-                  <td data-label="Itens">{s.items_count}</td>
-                  <td data-label="Unid.">{s.units_count}</td>
-                  <td className="muted" data-label="Pagamento">{PAYMENT[s.payment_method] || s.payment_method}</td>
                   <td style={{ fontWeight: 600 }} data-label="Total">{formatBRL(s.total)}</td>
                   <td data-label="Status">
                     {s.status === 'cancelled'
                       ? <span className="badge badge-danger">Cancelada</span>
                       : <span className="badge badge-success">Aberta</span>}
                   </td>
-                  <td className="muted" data-label="Data">{new Date(s.sold_at).toLocaleString('pt-BR')}</td>
+                  <td style={{ fontWeight: 700 }} data-label="#" className="td-secondary">#{s.number}</td>
+                  <td data-label="Itens" className="td-secondary">{s.items_count}</td>
+                  <td data-label="Unid." className="td-secondary">{s.units_count}</td>
+                  <td className="muted td-secondary" data-label="Pagamento">{PAYMENT[s.payment_method] || s.payment_method}</td>
+                  <td className="muted td-secondary" data-label="Data">{new Date(s.sold_at).toLocaleString('pt-BR')}</td>
+                  <td className="tr-expand-toggle">
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggle(s.id)}>
+                      {isExpanded(s.id) ? 'Ver menos' : 'Ver mais'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

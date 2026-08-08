@@ -3,6 +3,7 @@ import { api } from '../../../api/client';
 import { Loading, EmptyState } from '../../../components/ui';
 import { IconLayers, IconSearch, IconArrowUp, IconArrowDown } from '../../../components/ui/icons';
 import { formatBRL } from '../../../lib/format';
+import { useExpandedRows } from '../../../hooks/useExpandedRows';
 import { useDrilldown } from '../useDrilldown';
 import { DrilldownModal } from './DrilldownModal';
 import { StockValueFilters, StockValueItem, StockValueSummary } from '../types';
@@ -20,6 +21,7 @@ export function StockValueModal({ open, onClose }: { open: boolean; onClose: () 
     '/dashboard/drilldown/stock-value',
     { search: '', category: '', sort: 'value', dir: 'desc' },
   );
+  const { isExpanded, toggle } = useExpandedRows();
   const [categories, setCategories] = useState<CatalogItem[]>([]);
   useEffect(() => { api.get('/catalog/categories').then(({ data }) => setCategories(data)).catch(() => {}); }, []);
 
@@ -71,16 +73,21 @@ export function StockValueModal({ open, onClose }: { open: boolean; onClose: () 
       ) : (
         <div className="table-wrap" style={{ boxShadow: 'none' }}>
           <table className="table">
-            <thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Estoque</th><th>Custo unit.</th><th>Valor total</th></tr></thead>
+            <thead><tr><th>Produto</th><th>Valor total</th><th>Código</th><th>Categoria</th><th>Estoque</th><th>Custo unit.</th><th></th></tr></thead>
             <tbody>
               {data.items.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.id} className={isExpanded(p.id) ? 'tr-expanded' : ''}>
                   <td style={{ fontWeight: 600 }} data-label="Produto">{p.name}</td>
-                  <td className="muted" data-label="Código">{p.sku || '—'}</td>
-                  <td className="muted" data-label="Categoria">{p.category || '—'}</td>
-                  <td data-label="Estoque">{p.current_stock}</td>
-                  <td className="muted" data-label="Custo unit.">{formatBRL(p.cost_price)}</td>
                   <td style={{ fontWeight: 600 }} data-label="Valor total">{formatBRL(p.total_value)}</td>
+                  <td className="muted td-secondary" data-label="Código">{p.sku || '—'}</td>
+                  <td className="muted td-secondary" data-label="Categoria">{p.category || '—'}</td>
+                  <td className="td-secondary" data-label="Estoque">{p.current_stock}</td>
+                  <td className="muted td-secondary" data-label="Custo unit.">{formatBRL(p.cost_price)}</td>
+                  <td className="tr-expand-toggle">
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggle(p.id)}>
+                      {isExpanded(p.id) ? 'Ver menos' : 'Ver mais'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

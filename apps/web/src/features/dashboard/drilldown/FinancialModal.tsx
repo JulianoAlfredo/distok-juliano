@@ -1,6 +1,7 @@
 import { Loading, EmptyState } from '../../../components/ui';
 import { IconWallet, IconArrowDown, IconSearch } from '../../../components/ui/icons';
 import { formatBRL } from '../../../lib/format';
+import { useExpandedRows } from '../../../hooks/useExpandedRows';
 import { useDrilldown } from '../useDrilldown';
 import { DrilldownModal } from './DrilldownModal';
 import { FinancialFilters, FinancialItem, FinancialSummary, FinancialType } from '../types';
@@ -25,6 +26,7 @@ export function FinancialModal({ open, onClose, type }: { open: boolean; onClose
     '/dashboard/drilldown/financial',
     { type, situation: 'pending', search: '', dateFrom: '', dateTo: '', includeCancelled: false },
   );
+  const { isExpanded, toggle } = useExpandedRows();
 
   const title = type === 'receivable' ? 'Contas a receber' : 'Contas a pagar';
   const icon = type === 'receivable' ? <IconWallet /> : <IconArrowDown />;
@@ -74,20 +76,25 @@ export function FinancialModal({ open, onClose, type }: { open: boolean; onClose
       ) : (
         <div className="table-wrap" style={{ boxShadow: 'none' }}>
           <table className="table">
-            <thead><tr><th>Descrição</th><th>{type === 'receivable' ? 'Cliente' : 'Fornecedor'}</th><th>Vencimento</th><th>Valor</th><th>Situação</th></tr></thead>
+            <thead><tr><th>{type === 'receivable' ? 'Cliente' : 'Fornecedor'}</th><th>Valor</th><th>Situação</th><th>Descrição</th><th>Vencimento</th><th></th></tr></thead>
             <tbody>
               {data.items.map((f) => (
-                <tr key={f.id}>
-                  <td style={{ fontWeight: 600 }} data-label="Descrição">{f.description}</td>
-                  <td className="muted" data-label={type === 'receivable' ? 'Cliente' : 'Fornecedor'}>
+                <tr key={f.id} className={isExpanded(f.id) ? 'tr-expanded' : ''}>
+                  <td data-label={type === 'receivable' ? 'Cliente' : 'Fornecedor'}>
                     {f.party_name || f.customer_name || f.supplier_name || '—'}
-                  </td>
-                  <td data-label="Vencimento">
-                    {new Date(f.due_date).toLocaleDateString('pt-BR')}
-                    {f.is_overdue && f.days_overdue > 0 && <span className="muted"> ({f.days_overdue}d)</span>}
                   </td>
                   <td style={{ fontWeight: 600 }} data-label="Valor">{formatBRL(f.amount)}</td>
                   <td data-label="Situação"><SituationBadge situation={f.situation} /></td>
+                  <td className="muted td-secondary td-stack" data-label="Descrição">{f.description}</td>
+                  <td className="td-secondary" data-label="Vencimento">
+                    {new Date(f.due_date).toLocaleDateString('pt-BR')}
+                    {f.is_overdue && f.days_overdue > 0 && <span className="muted"> ({f.days_overdue}d)</span>}
+                  </td>
+                  <td className="tr-expand-toggle">
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggle(f.id)}>
+                      {isExpanded(f.id) ? 'Ver menos' : 'Ver mais'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

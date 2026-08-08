@@ -11,6 +11,7 @@ import { useConfirm } from '../../components/ui/Confirm';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { FieldLabel, FieldError } from '../../components/ui/Hint';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
+import { useExpandedRows } from '../../hooks/useExpandedRows';
 import { formatBRL } from '../../lib/format';
 import { IconBox, IconPlus, IconSearch, IconHistory, IconDots } from '../../components/ui/icons';
 
@@ -96,6 +97,7 @@ export function ProductsPage() {
   const [categories, setCategories] = useState<CatalogItem[]>([]);
   const [units, setUnits]           = useState<CatalogItem[]>([]);
   const [history, setHistory]       = useState<{ product: { id: string; name: string }; entries: HistoryEntry[] } | null>(null);
+  const { isExpanded, toggle } = useExpandedRows();
   const term = t('product').toLowerCase();
 
   async function load(p = currentPage) {
@@ -199,24 +201,29 @@ export function ProductsPage() {
           <div className="table-wrap">
           <table className="table">
             <thead><tr>
-              <th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th><th>Zé Delivery</th><th></th></tr></thead>
+              <th>Produto</th><th>Preço</th><th>Código</th><th>Categoria</th><th>Zé Delivery</th><th></th><th></th></tr></thead>
             <tbody>
               {page.items.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.id} className={isExpanded(p.id) ? 'tr-expanded' : ''}>
                   <td className="product-cell-td">
                     <div className="product-cell">
                       <span style={{ fontWeight: 600 }}>{p.name}</span>
                       <StatusBadge status={p.status} />
                     </div>
                   </td>
-                  <td className="muted" data-label="Código">{p.sku || '—'}</td>
-                  <td className="muted" data-label="Categoria">{p.category || '—'}</td>
                   <td data-label="Preço">
                     {formatBRL(Number(p.cost_price))} → {formatBRL(Number(p.sale_price))}
                     {p.margin != null && <span className="muted"> ({p.margin}%)</span>}
                   </td>
-                  <td data-label="Zé Delivery">
+                  <td className="muted td-secondary" data-label="Código">{p.sku || '—'}</td>
+                  <td className="muted td-secondary" data-label="Categoria">{p.category || '—'}</td>
+                  <td className="td-secondary" data-label="Zé Delivery">
                     {p.ze_delivery_sync_enabled ? <span className="badge badge-success">sync</span> : p.ze_delivery_item_id ? <span className="badge">vinculado</span> : '—'}
+                  </td>
+                  <td className="tr-expand-toggle">
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggle(p.id)}>
+                      {isExpanded(p.id) ? 'Ver menos' : 'Ver mais'}
+                    </button>
                   </td>
                   <td>
                     <RowActionsMenu

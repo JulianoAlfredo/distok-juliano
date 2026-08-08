@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Modal } from '../../../components/ui/Modal';
+import { IconChevronDown } from '../../../components/ui/icons';
 
 interface DrilldownModalProps {
   open: boolean;
@@ -28,6 +29,8 @@ export function DrilldownModal({
   open, onClose, title, subtitle, filters, children,
   page, pages, total, onPageChange, itemLabel, summary, headerAction,
 }: DrilldownModalProps) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   return (
     <Modal
       open={open}
@@ -47,9 +50,19 @@ export function DrilldownModal({
       }
     >
       {(filters || headerAction) && (
-        <div className="row-between wrap" style={{ gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)' }}>
-          <div className="row wrap" style={{ gap: 'var(--sp-3)', flex: 1 }}>{filters}</div>
-          {headerAction}
+        <div style={{ marginBottom: 'var(--sp-4)' }}>
+          {filters && (
+            <button
+              type="button" className="btn btn-sm btn-ghost drilldown-filters-toggle"
+              onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}
+            >
+              Filtros <IconChevronDown width={14} height={14} style={{ transform: filtersOpen ? 'rotate(180deg)' : undefined, transition: 'transform var(--t-fast)' }} />
+            </button>
+          )}
+          <div className="row-between wrap" style={{ gap: 'var(--sp-3)' }}>
+            <div className={`row wrap drilldown-filters${filtersOpen ? ' open' : ''}`} style={{ gap: 'var(--sp-3)', flex: 1 }}>{filters}</div>
+            {headerAction}
+          </div>
         </div>
       )}
       {children}
