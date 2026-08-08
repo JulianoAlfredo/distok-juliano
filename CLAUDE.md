@@ -74,3 +74,32 @@ In production the API serves the built SPA directly: `apps/api/src/app.js` regis
 
 ### Testing focus
 Tests live under `apps/api/tests/<domain>/`. The highest-value suite is `tests/isolation/tenant-isolation.test.js`, which proves tenant A cannot read/write tenant B's data. When changing anything in `core/` or adding a new tenant-scoped module, run/extend this suite plus the relevant domain test (`stock`, `products`, `branding`, `tenants`, `reports`).
+
+## Equipe de agentes (Claude Code)
+
+Este repositório tem uma equipe própria de 7 subagentes definida em `.claude/agents/`, com pipeline de 5 etapas. Vale dentro deste projeto (a squad user-level de 5 agentes em `~/.claude/agents/` vale para outros projetos, não aqui).
+
+| Badge | Agente | Modelo | Papel |
+|---|---|---|---|
+| 🎓 | `reitor` | Fable | Chefe. Levantamento de requisitos e veredito final vinculante. Não escreve código. |
+| 🧭 | `gerente` | Opus | Transforma requisitos em plano executável; revisa o diff dos operários. |
+| 🔎 | `mapeador` | Sonnet | Acha arquivo, mapeia fluxo, devolve fato com `arquivo:linha`. |
+| ⚙️ | `construtor-api` | Sonnet | Backend em `apps/api`. |
+| 🎨 | `construtor-ui` | Sonnet | Frontend em `apps/web`. |
+| 🧪 | `testador` | Sonnet | Lint, suite, typecheck, build, smoke. Saída crua. |
+| 📓 | `escriba` | Sonnet | Escreve no vault `~/distok-brain` (skill `distok-brain`). |
+
+Pipeline: **requisitos** (reitor) → **mapeamento e desenho** (mapeador → gerente) → **codificação em paralelo** (construtor-api ‖ construtor-ui) → **testes** (testador) → **veredito** (reitor, 5 critérios: segurança · escalabilidade · solidificação · UX · otimização — reprovar em um reprova tudo). Cross-review do `security-pentester` (squad user-level) é obrigatório quando o diff toca auth, RLS, PII, pagamento, upload, admin, webhook ou endpoint público novo.
+
+Quando não rodar o pipeline: pergunta conceitual, leitura de doc, config de harness, correção de uma linha, consulta ao banco.
+
+### Hooks (`.claude/settings.json` + `.claude/hooks/`)
+
+- **SessionStart** (`sessao-inicio.js`) injeta estado vivo no contexto: branch, se a árvore está suja e com quantos arquivos, últimos 5 commits, e as primeiras linhas de `~/distok-brain/01 - Projeto/Estado Atual.md`. Grava um marcador em `.claude/tmp/` com o timestamp de início.
+- **Stop** (`sessao-fim.js`) é a trava de memória: se a sessão mexeu em código (árvore suja ou commit novo) e nada foi escrito em `~/distok-brain` desde o início, bloqueia o encerramento e manda delegar ao `escriba`. Sessão de leitura/pergunta não é bloqueada. Falha aberta (erro interno libera), no máximo 1 bloqueio por sessão, respeita `stop_hook_active` para não entrar em loop.
+
+### Armadilhas conhecidas do ambiente
+
+- `docs/` está desatualizado — descreve o MVP inicial (`docs/schema.sql` tem 10 tabelas, batendo só com a migration `20260620000001_init.js`) e não reflete os módulos adicionados depois (customers, suppliers, purchases, sales, cashier, financial, sale_payments). Verdade de schema: `apps/api/src/db/migrations/`.
+- Não existe `.env.example` na raiz, apesar de o README mandar copiar.
+- GSAP ainda não está instalado em `apps/web` — primeira tarefa de movimento roda `npm i gsap @gsap/react -w apps/web`.

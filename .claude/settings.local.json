@@ -4,7 +4,15 @@
       "WebSearch",
       "WebFetch(domain:developer.ifood.com.br)",
       "WebFetch(domain:seller-public-api.ze.delivery)",
-      "WebFetch(domain:blog.connectplug.com.br)"
+      "WebFetch(domain:blog.connectplug.com.br)",
+      "Bash(curl -s -o /tmp/ze_openapi.json -w \"%{http_code}\\\\n\" https://seller-public-api.ze.delivery/docs/openapi.json)",
+      "Read(//tmp/**)",
+      "WebFetch(domain:claude.ai)",
+      "Read(//Users/Julio/.claude/**)",
+      "Read(//Users/Julio/**)",
+      "Skill(update-config)",
+      "Bash(chmod +x /Users/Julio/Desktop/distok-juliano/.claude/hooks/statusline.js)",
+      "Bash(node /Users/Julio/Desktop/distok-juliano/.claude/hooks/statusline.js)"
     ]
   }
 }

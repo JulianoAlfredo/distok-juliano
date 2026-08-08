@@ -21,6 +21,8 @@ module.exports = async function productsRoutes(app) {
       cost_price: { type: 'number', minimum: 0 },
       sale_price: { type: 'number', minimum: 0 },
       min_stock: { type: 'integer', minimum: 0 },
+      ze_delivery_item_id: { type: ['string', 'null'], maxLength: 100 },
+      ze_delivery_sync_enabled: { type: 'boolean' },
     },
   };
 

@@ -16,9 +16,13 @@ import { formatBRL } from '../../lib/format';
 import { IconBox, IconPlus, IconSearch, IconHistory } from '../../components/ui/icons';
 
 type CatalogItem = { id: string; name: string; symbol?: string };
-type Product = { id: string; name: string; sku: string | null; category: string | null; unit: string; cost_price: number; sale_price: number; min_stock: number; status: string; margin: number | null };
+type Product = {
+  id: string; name: string; sku: string | null; category: string | null; unit: string;
+  cost_price: number; sale_price: number; min_stock: number; status: string; margin: number | null;
+  ze_delivery_item_id: string | null; ze_delivery_sync_enabled: boolean | number;
+};
 type Page = { items: Product[]; total: number; page: number; pages: number };
-const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0 };
+const EMPTY = { name: '', sku: '', category: '', unit: 'un', cost_price: 0, sale_price: 0, min_stock: 0, ze_delivery_item_id: '', ze_delivery_sync_enabled: false };
 const ACTION_LABEL: Record<string, string> = { 'product.create': 'Cadastro', 'product.update': 'Edição', 'product.inactivate': 'Inativação' };
 
 export function ProductsPage() {
@@ -58,7 +62,10 @@ export function ProductsPage() {
 
   function openNew() { setForm({ ...EMPTY }); setEditingId(null); clearFE(); setOpen(true); }
   function startEdit(p: Product) {
-    setForm({ name: p.name, sku: p.sku || '', category: p.category || '', unit: p.unit, cost_price: p.cost_price, sale_price: p.sale_price, min_stock: p.min_stock });
+    setForm({
+      name: p.name, sku: p.sku || '', category: p.category || '', unit: p.unit, cost_price: p.cost_price, sale_price: p.sale_price, min_stock: p.min_stock,
+      ze_delivery_item_id: p.ze_delivery_item_id || '', ze_delivery_sync_enabled: !!p.ze_delivery_sync_enabled,
+    });
     setEditingId(p.id); clearFE(); setOpen(true);
   }
 
@@ -74,7 +81,12 @@ export function ProductsPage() {
     if (!nameOk || !priceOk) return;
     setSaving(true);
     try {
-      const payload = { ...form, cost_price: Number(form.cost_price), sale_price: Number(form.sale_price), min_stock: Number(form.min_stock) };
+      const payload = {
+        ...form,
+        cost_price: Number(form.cost_price), sale_price: Number(form.sale_price), min_stock: Number(form.min_stock),
+        ze_delivery_item_id: form.ze_delivery_item_id || null,
+        ze_delivery_sync_enabled: !!form.ze_delivery_sync_enabled,
+      };
       if (editingId) await api.put(`/products/${editingId}`, payload);
       else           await api.post('/products', payload);
       clearFE();
@@ -143,7 +155,7 @@ export function ProductsPage() {
           <table className="table">
             <thead><tr>
               <th className="bulk-col"><input type="checkbox" aria-label="Selecionar todos" checked={bulk.allSelected} onChange={bulk.toggleAll} /></th>
-              <th>Nome</th><th>Código</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Situação</th><th></th></tr></thead>
+              <th>Nome</th><th>Código</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Zé</th><th>Situação</th><th></th></tr></thead>
             <tbody>
               {page.items.map((p) => (
                 <tr key={p.id}>
@@ -154,6 +166,7 @@ export function ProductsPage() {
                   <td>{formatBRL(Number(p.cost_price))}</td>
                   <td>{formatBRL(Number(p.sale_price))}</td>
                   <td>{p.margin == null ? '—' : `${p.margin}%`}</td>
+                  <td>{p.ze_delivery_sync_enabled ? <span className="badge badge-success">sync</span> : p.ze_delivery_item_id ? <span className="badge">vinculado</span> : '—'}</td>
                   <td><StatusBadge status={p.status} /></td>
                   <td>
                     <div className="row" style={{ gap: 'var(--sp-2)' }}>
@@ -237,6 +250,18 @@ export function ProductsPage() {
           <div className="field" style={{ margin: 0 }}>
             <FieldLabel hint="O sistema avisa quando o saldo ficar igual ou abaixo deste número.">Estoque mínimo</FieldLabel>
             <input className="input" type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <FieldLabel hint="ID do item correspondente no catálogo do Zé Delivery. Deixe em branco se este item não existe lá.">Item no Zé Delivery</FieldLabel>
+            <input className="input" placeholder="opcional" value={form.ze_delivery_item_id}
+              onChange={(e) => setForm({ ...form, ze_delivery_item_id: e.target.value, ze_delivery_sync_enabled: e.target.value ? form.ze_delivery_sync_enabled : false })} />
+          </div>
+          <div className="field" style={{ margin: 0, display: 'flex', alignItems: 'flex-end' }}>
+            <label className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center', cursor: form.ze_delivery_item_id ? 'pointer' : 'not-allowed' }}>
+              <input type="checkbox" disabled={!form.ze_delivery_item_id} checked={!!form.ze_delivery_sync_enabled}
+                onChange={(e) => setForm({ ...form, ze_delivery_sync_enabled: e.target.checked })} />
+              Sincronizar estoque com o Zé Delivery
+            </label>
           </div>
         </div>
       </Modal>

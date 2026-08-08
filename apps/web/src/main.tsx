@@ -33,6 +33,7 @@ const PurchasesPage  = lazy(() => import('./features/purchases/PurchasesPage').t
 const SalesPage      = lazy(() => import('./features/sales/SalesPage').then((m) => ({ default: m.SalesPage })));
 const CashierPage    = lazy(() => import('./features/cashier/CashierPage').then((m) => ({ default: m.CashierPage })));
 const FinancialPage  = lazy(() => import('./features/financial/FinancialPage').then((m) => ({ default: m.FinancialPage })));
+const ZeDeliverySettings = lazy(() => import('./features/ze-delivery/ZeDeliverySettings').then((m) => ({ default: m.ZeDeliverySettings })));
 
 function PageFallback() {
   return (
@@ -72,6 +73,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/" element={<RequireAuth><RoleHome /></RequireAuth>} />
               <Route path="/relatorios"    element={<RequireAuth><ReportsPage /></RequireAuth>} />
               <Route path="/marca"         element={<RequireAuth><BrandingEditor /></RequireAuth>} />
+              <Route path="/integracoes/ze-delivery" element={<RequireAuth><ZeDeliverySettings /></RequireAuth>} />
               <Route path="/produtos"      element={<RequireAuth><ProductsPage /></RequireAuth>} />
               <Route path="/estoque"       element={<RequireAuth><StockPage /></RequireAuth>} />
               <Route path="/clientes"      element={<RequireAuth><CustomersPage /></RequireAuth>} />

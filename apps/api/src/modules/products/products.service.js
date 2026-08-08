@@ -60,6 +60,10 @@ async function create(ctx, data) {
     sale_price: data.sale_price ?? 0,
     min_stock: data.min_stock ?? 0,
     status: PRODUCT_STATUS.ACTIVE,
+    // vínculo com o Zé Delivery: sync começa sempre desligado — o admin liga explicitamente
+    // depois de conferir o mapeamento (evita empurrar disponibilidade sem revisão).
+    ze_delivery_item_id: data.ze_delivery_item_id || null,
+    ze_delivery_sync_enabled: 0,
   };
   await knex.transaction(async (trx) => {
     await assertCanAddProduct(ctx.tenantId, trx); // FR20, com lock contra corrida
@@ -75,8 +79,17 @@ async function update(ctx, id, data) {
   const before = await repo(ctx).findById(id);
   if (!before) throw Errors.notFound('Produto não encontrado');
   const patch = {};
-  for (const k of ['name', 'description', 'category', 'unit', 'sku', 'cost_price', 'sale_price', 'min_stock']) {
+  for (const k of ['name', 'description', 'category', 'unit', 'sku', 'cost_price', 'sale_price', 'min_stock', 'ze_delivery_item_id']) {
     if (data[k] !== undefined) patch[k] = data[k];
+  }
+  // sync com Zé Delivery só pode ser ligado se houver vínculo (existente ou sendo setado agora)
+  if (data.ze_delivery_sync_enabled !== undefined) {
+    const enabled = !!data.ze_delivery_sync_enabled;
+    const itemId = patch.ze_delivery_item_id !== undefined ? patch.ze_delivery_item_id : before.ze_delivery_item_id;
+    if (enabled && !itemId) {
+      throw Errors.validation('Vincule o produto a um item do Zé Delivery antes de habilitar o sync');
+    }
+    patch.ze_delivery_sync_enabled = enabled ? 1 : 0;
   }
   await repo(ctx).updateById(id, patch);
   await audit.record({ ctx, action: 'product.update', entityType: 'product', entityId: id, before, after: patch, ip: ctx.ip });

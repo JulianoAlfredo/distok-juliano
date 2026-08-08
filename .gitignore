@@ -14,3 +14,4 @@ apps/web/dist/
 apps/api/src/db/*.sqlite
 .vscode/
 .idea/
+.claude/tmp/

@@ -19,7 +19,8 @@ function repo(ctx) {
 const PUBLIC_COLS = ['id', 'name', 'email', 'cpf', 'role_title', 'role', 'status', 'last_login_at', 'created_at'];
 
 async function list(ctx, { status, page = 1, limit = 25 }) {
-  const q = repo(ctx).query().select(PUBLIC_COLS);
+  // Ator de sistema de integrações (ex.: Zé Delivery) nunca aparece na tela de Funcionários.
+  const q = repo(ctx).query().select(PUBLIC_COLS).where('users.is_system', false);
   if (status) q.where('users.status', status);
   return q.orderBy('users.name', 'asc').limit(limit).offset((page - 1) * limit);
 }

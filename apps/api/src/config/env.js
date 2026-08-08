@@ -57,6 +57,16 @@ const env = {
 
   // Alerting de erro em produção (P1 #5). Sem DSN, o app roda normalmente sem enviar nada.
   SENTRY_DSN: process.env.SENTRY_DSN || '',
+
+  security: {
+    // Chave AES-256-GCM (base64 de 32 bytes) p/ credenciais de integrações em repouso (ex.: Zé Delivery).
+    encryptionKey: required('ZE_DELIVERY_ENC_KEY', isTest ? '6ELR8j9Ab7YhIb+jtDb9Oe0fU2NpWnldlaxXjxo701o=' : undefined),
+  },
+
+  zeDelivery: {
+    // Segredo compartilhado dos endpoints internos de cron (/internal/ze-delivery/*), não é JWT.
+    cronSecret: required('ZE_DELIVERY_CRON_SECRET', isTest ? 'test-cron-secret' : undefined),
+  },
 };
 
 module.exports = env;
