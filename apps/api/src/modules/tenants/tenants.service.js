@@ -35,12 +35,13 @@ async function provisionTenant(trx, { name, cnpj, slug, address, planCode = PLAN
   const finalSlug = slugify(slug || name);
   if (!finalSlug) throw Errors.validation('Informe um nome válido para a empresa.');
 
-  const dup =
-    (await trx('tenants').where({ slug: finalSlug }).first()) ||
-    (cnpj && (await trx('tenants').where({ cnpj }).first()));
-  if (dup) {
-    console.warn('[tenants.provision] cadastro duplicado (slug/cnpj)');
-    throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
+  // checagens separadas — CNPJ e subdomínio são informação pública (não há problema em
+  // dizer qual colidiu, diferente do e-mail de login, que cada chamador trata à parte).
+  if (await trx('tenants').where({ slug: finalSlug }).first()) {
+    throw Errors.validation(`O endereço "${finalSlug}" já está em uso. Escolha outro subdomínio.`);
+  }
+  if (cnpj && (await trx('tenants').where({ cnpj }).first())) {
+    throw Errors.validation('Este CNPJ já está cadastrado no DISTOK.');
   }
 
   const tenantId = uuid();
@@ -70,11 +71,9 @@ async function listTenants({ status, plan, page = 1, limit = 25 }) {
 }
 
 async function createTenant({ ctx, name, cnpj, slug, address, planCode, adminName, adminEmail, ip }) {
-  // e-mail do admin é checado aqui (fora de provisionTenant, que só sabe de slug/cnpj) —
-  // mesma mensagem genérica pra não revelar o que já existe.
+  // e-mail do admin é checado aqui (fora de provisionTenant, que só sabe de slug/cnpj).
   if (await knex('users').where({ email: adminEmail }).first()) {
-    console.warn('[tenants.create] e-mail de admin já cadastrado');
-    throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
+    throw Errors.validation('Este e-mail já possui uma conta no DISTOK.');
   }
 
   const tempPass = password.generateTempPassword();

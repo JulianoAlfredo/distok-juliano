@@ -26,8 +26,7 @@ async function signup({ companyName, cnpj, slug, adminName, adminEmail, adminPas
     throw Errors.validation('A senha deve ter ao menos 8 caracteres');
   }
   if (await knex('users').where({ email: adminEmail }).first()) {
-    console.warn('[signup] e-mail já cadastrado');
-    throw Errors.validation('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
+    throw Errors.validation('Este e-mail já possui uma conta. Faça login ou recupere sua senha.');
   }
 
   const hash = await password.hash(adminPassword);

@@ -41,12 +41,9 @@ export function SignupPage() {
     <AuthLayout name="DISTOK">
       <form className="auth-card card card-pad-lg" onSubmit={onSubmit}>
         <h2 style={{ marginBottom: 'var(--sp-1)' }}>Crie sua conta</h2>
-        <p className="muted" style={{ marginBottom: 'var(--sp-2)' }}>
+        <p className="muted" style={{ marginBottom: 'var(--sp-5)' }}>
           Cadastre sua distribuidora e comece a usar o DISTOK agora.
         </p>
-        <div className="badge badge-success" style={{ marginBottom: 'var(--sp-5)' }}>
-          R$ 39,90/mês — 7 dias grátis, sem cartão de crédito
-        </div>
 
         <div className="field">
           <label>Nome da empresa</label>
