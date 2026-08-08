@@ -244,6 +244,10 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .stat-label { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-faint); display: flex; align-items: center; gap: var(--sp-2); }
 .stat-value { font-size: var(--fs-2xl); font-weight: 800; letter-spacing: -0.02em; margin-top: var(--sp-2); }
 .stat-ico { width: 36px; height: 36px; border-radius: var(--radius-md); display: grid; place-items: center; background: var(--primary-soft); color: var(--color-primary); flex: none; }
+/* Stat vira <button> quando clicável (drill-down/navegação) — reset de UA button,
+   a aparência em si continua vindo de .stat (background/border/padding/shadow acima). */
+button.stat { font: inherit; text-align: left; cursor: pointer; width: 100%; display: block; margin: 0; transition: border-color var(--t-fast), box-shadow var(--t-fast); }
+button.stat:hover { border-color: var(--color-text-faint); box-shadow: var(--shadow-md); }
 
 /* ---------- Utilitários ---------- */
 .muted { color: var(--color-text-mut); }

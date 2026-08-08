@@ -1,0 +1,73 @@
+import { useEffect, useState } from 'react';
+import { api } from '../../../api/client';
+import { Loading, EmptyState } from '../../../components/ui';
+import { IconBox, IconSearch } from '../../../components/ui/icons';
+import { useDrilldown } from '../useDrilldown';
+import { DrilldownModal } from './DrilldownModal';
+import { OutOfStockFilters, OutOfStockItem } from '../types';
+
+interface CatalogItem { id: string; name: string }
+
+export function OutOfStockModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { data, filters, setFilter, page, setPage, loading, error } = useDrilldown<OutOfStockItem, OutOfStockFilters>(
+    '/dashboard/drilldown/out-of-stock',
+    { search: '', category: '' },
+  );
+  const [categories, setCategories] = useState<CatalogItem[]>([]);
+  useEffect(() => { api.get('/catalog/categories').then(({ data }) => setCategories(data)).catch(() => {}); }, []);
+
+  return (
+    <DrilldownModal
+      open={open}
+      onClose={onClose}
+      title="Produtos sem estoque"
+      subtitle="Itens com saldo zerado — reposição necessária"
+      itemLabel="produto"
+      page={page}
+      pages={data.pages}
+      total={data.total}
+      onPageChange={setPage}
+      filters={
+        <>
+          <div style={{ position: 'relative', minWidth: 220, flex: 1 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}><IconSearch width={16} height={16} /></span>
+            <input
+              className="input" style={{ paddingLeft: 34 }}
+              aria-label="Buscar produto" placeholder="Buscar pelo nome ou código"
+              value={filters.search} onChange={(e) => setFilter('search', e.target.value)}
+            />
+          </div>
+          {categories.length > 0 && (
+            <select className="input" style={{ maxWidth: 200 }} aria-label="Filtrar por categoria"
+              value={filters.category} onChange={(e) => setFilter('category', e.target.value)}>
+              <option value="">Todas as categorias</option>
+              {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          )}
+        </>
+      }
+    >
+      {loading ? <Loading label="Carregando produtos…" /> : error ? (
+        <EmptyState icon={<IconBox />} title="Não foi possível carregar" hint="Tente novamente em instantes." />
+      ) : data.items.length === 0 ? (
+        <EmptyState icon={<IconBox />} title="Nenhum produto encontrado" hint="Ajuste a busca ou o filtro de categoria." />
+      ) : (
+        <div className="table-wrap" style={{ boxShadow: 'none' }}>
+          <table className="table">
+            <thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Mínimo</th></tr></thead>
+            <tbody>
+              {data.items.map((p) => (
+                <tr key={p.id}>
+                  <td style={{ fontWeight: 600 }} data-label="Produto">{p.name}</td>
+                  <td className="muted" data-label="Código">{p.sku || '—'}</td>
+                  <td className="muted" data-label="Categoria">{p.category || '—'}</td>
+                  <td data-label="Mínimo">{p.min_stock}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DrilldownModal>
+  );
+}
