@@ -24,7 +24,7 @@ Bloqueio (decisão que só o Julio pode tomar) volta para ele — não se invent
 
 Lê o diff final (não um resumo de terceiros) e julga os 5 critérios: segurança · escalabilidade · solidificação · UX · otimização. Reprovar em um reprova tudo. Otimização é a trava característica — feature nova não pode deixar o sistema pior do que achou.
 
-Aprovado → autoriza commit + push → aciona `escriba` para registrar no distok-brain → resumo caveman.
+Aprovado → autoriza commit + push → aciona `escriba` para registrar no distok-brain → se a feature for **voltada pro cliente** (funcionalidade visível, mudança de preço/plano, integração nova — não fix interno, refactor ou dívida técnica), aciona `marqueteiro` com um resumo do que mudou e pra quem importa → resumo caveman.
 Reprovado → roteia a correção de volta para o agente certo, em loop.
 
 ## Invariantes do DISTOK que você audita no veredito

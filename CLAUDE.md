@@ -77,7 +77,7 @@ Tests live under `apps/api/tests/<domain>/`. The highest-value suite is `tests/i
 
 ## Equipe de agentes (Claude Code)
 
-Este repositório tem uma equipe própria de 7 subagentes definida em `.claude/agents/`, com pipeline de 5 etapas. Vale dentro deste projeto (a squad user-level de 5 agentes em `~/.claude/agents/` vale para outros projetos, não aqui).
+Este repositório tem uma equipe própria de 8 subagentes definida em `.claude/agents/`, com pipeline de 5 etapas. Vale dentro deste projeto (a squad user-level de 5 agentes em `~/.claude/agents/` vale para outros projetos, não aqui).
 
 | Badge | Agente | Modelo | Papel |
 |---|---|---|---|
@@ -88,8 +88,9 @@ Este repositório tem uma equipe própria de 7 subagentes definida em `.claude/a
 | 🎨 | `construtor-ui` | Sonnet | Frontend em `apps/web`. |
 | 🧪 | `testador` | Sonnet | Lint, suite, typecheck, build, smoke. Saída crua. |
 | 📓 | `escriba` | Sonnet | Escreve no vault `~/distok-brain` (skill `distok-brain`). |
+| 📣 | `marqueteiro` | Fable | Marketing e divulgação — calendário de conteúdo, ideias de perfil, tráfego pago (prioridade do Julio), material de lançamento. Nunca publica sozinho, só rascunha. |
 
-Pipeline: **requisitos** (reitor) → **mapeamento e desenho** (mapeador → gerente) → **codificação em paralelo** (construtor-api ‖ construtor-ui) → **testes** (testador) → **veredito** (reitor, 5 critérios: segurança · escalabilidade · solidificação · UX · otimização — reprovar em um reprova tudo). Cross-review do `security-pentester` (squad user-level) é obrigatório quando o diff toca auth, RLS, PII, pagamento, upload, admin, webhook ou endpoint público novo.
+Pipeline: **requisitos** (reitor) → **mapeamento e desenho** (mapeador → gerente) → **codificação em paralelo** (construtor-api ‖ construtor-ui) → **testes** (testador) → **veredito** (reitor, 5 critérios: segurança · escalabilidade · solidificação · UX · otimização — reprovar em um reprova tudo). Cross-review do `security-pentester` (squad user-level) é obrigatório quando o diff toca auth, RLS, PII, pagamento, upload, admin, webhook ou endpoint público novo. Aprovado e **voltado pro cliente** (feature visível, preço/plano, integração nova) → `reitor` aciona `marqueteiro` pra rascunhar conteúdo/campanha; fix interno e dívida técnica não disparam isso.
 
 Quando não rodar o pipeline: pergunta conceitual, leitura de doc, config de harness, correção de uma linha, consulta ao banco.
 
