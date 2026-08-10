@@ -21,4 +21,12 @@ Como é 100% estático, não precisa de build command nem output directory além
 
 ## Editar
 
-Um arquivo só, `index.html`. Preço, depoimentos e o resto do conteúdo estão direto no HTML — sem CMS. Se o preço mudar (hoje: taxa de instalação R$ 450 + mensalidade R$ 130), busque por `price-nums` no arquivo.
+Um arquivo só, `index.html`. Todo o conteúdo está direto no HTML — sem CMS. Se o preço mudar (hoje: R$ 39,90/mês, plano único, 7 dias grátis, sem taxa de instalação), busque por `price-nums` no arquivo. Todos os CTAs apontam para o cadastro self-service (`https://painel.distok.com.br/cadastro`).
+
+A página **não tem depoimentos** de propósito: ainda não há clientes reais pra citar, e depoimento inventado é propaganda enganosa. Quando houver clientes de verdade dispostos a dar depoimento, aí sim adiciona a seção.
+
+## Logo (`logo/`)
+
+- `distok-mark.svg` — só o símbolo (caixa isométrica com check), vetor, escala pra qualquer tamanho.
+- `distok-logo.png` — símbolo + wordmark, fundo transparente, pra fundos claros.
+- `distok-logo-branco.png` — versão com texto branco, pra fundos escuros.
