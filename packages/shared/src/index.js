@@ -72,9 +72,9 @@ const DEFAULT_BRANDING = Object.freeze({
   display_name: 'DISTOK',
   logo_url: null,
   favicon_url: null,
-  color_primary: '#2563EB',
-  color_secondary: '#1E293B',
-  color_accent: '#F59E0B',
+  color_primary: '#1856F6',
+  color_secondary: '#142145',
+  color_accent: '#F2A63D',
 });
 
 /** Códigos de erro de negócio padronizados (alinhados à arquitetura §9). */

@@ -6,9 +6,9 @@
    ============================================================ */
 :root {
   /* Marca (sobrescrita por tenant) */
-  --color-primary: #2563eb;
-  --color-secondary: #0f172a;
-  --color-accent: #f59e0b;
+  --color-primary: #1856F6;
+  --color-secondary: #142145;
+  --color-accent: #F2A63D;
   --on-primary: #ffffff;
 
   /* Tints derivados da marca (CSS color-mix, navegadores modernos) */
