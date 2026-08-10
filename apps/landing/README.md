@@ -27,6 +27,8 @@ A página **não tem depoimentos** de propósito: ainda não há clientes reais 
 
 ## Logo (`logo/`)
 
-- `distok-mark.svg` — só o símbolo (caixa isométrica com check), vetor, escala pra qualquer tamanho.
-- `distok-logo.png` — símbolo + wordmark, fundo transparente, pra fundos claros.
-- `distok-logo-branco.png` — versão com texto branco, pra fundos escuros.
+A marca oficial vive em `apps/web/public/brand/` (cubo em contorno + wordmark Inter 800). Esta pasta tem derivados pra uso em marketing:
+
+- `distok-mark.svg` — cópia do símbolo oficial (cubo em contorno azul).
+- `distok-logo.png` — símbolo + wordmark em PNG transparente, pra fundos claros.
+- `distok-logo-branco.png` — versão branca, pra fundos escuros.
